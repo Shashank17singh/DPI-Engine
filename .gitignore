@@ -1,0 +1,24 @@
+# Build output
+build/
+out/
+cmake-build-*/
+compile_commands.json
+
+# Compiled binaries
+dpi_simple
+dpi_engine
+packet_analyzer
+*.o
+*.obj
+*.exe
+*.out
+
+# Generated pcap output (regenerate with the tool, don't commit it)
+output.pcap
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
