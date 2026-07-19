@@ -1,4 +1,18 @@
-# DPI Engine - Deep Packet Inspection System
+<div align="center">
+
+# 📡 DPI Engine — Deep Packet Inspection System
+
+**A high-throughput C++17 packet analyzer that reconstructs TCP/UDP flows and classifies traffic via TLS SNI & HTTP Host inspection**
+
+[![C++](https://img.shields.io/badge/C++17-High%20Performance-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)](https://isocpp.org/)
+[![Networking](https://img.shields.io/badge/PCAP-Networking-4B8BBE?style=for-the-badge&logoColor=white)](https://www.tcpdump.org/)
+[![Multithreading](https://img.shields.io/badge/Multithreaded-Load%20Balancer-FF4500?style=for-the-badge&logoColor=white)](#6-the-journey-of-a-packet-multi-threaded-version)
+
+</div>
+
+---
+
+## 📖 Overview
 
 A C++17 packet analyzer that reads PCAP captures, reconstructs TCP/UDP flows, classifies traffic by application (via TLS SNI / HTTP Host inspection), and can selectively block traffic by app, IP, or domain — available in both a single-threaded and a multi-threaded (load-balancer + fast-path) implementation.
 
@@ -201,6 +215,32 @@ packet_analyzer/
 ---
 
 ## 5. The Journey of a Packet (Simple Version)
+
+`mermaid
+graph TD
+    A[PCAP File / Network Interface] -->|Raw Packets| B(Packet Reader)
+    B -->|Parse Ethernet/IPv4| C(Flow Tracker)
+    C -->|Reconstruct TCP/UDP| D{Protocol Parser}
+    
+    D -->|Port 443| E(TLS Parser)
+    E -->|Extract SNI| F[Application Classification]
+    
+    D -->|Port 80| G(HTTP Parser)
+    G -->|Extract Host Header| F
+    
+    F --> H{Firewall Rules}
+    H -->|Match Blocklist| I[Drop Packet]
+    H -->|No Match| J[Forward Packet]
+    
+    classDef io fill:#f9f0ff,stroke:#8a2be2,stroke-width:2px,color:#000;
+    classDef core fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000;
+    classDef logic fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000;
+    
+    class A,I,J io;
+    class B,C,D core;
+    class E,G,F,H logic;
+`
+
 
 Let's trace a single packet through `main_working.cpp`:
 
