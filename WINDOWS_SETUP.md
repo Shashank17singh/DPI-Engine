@@ -15,7 +15,7 @@ This guide will help you build and run the DPI Engine on Windows. Follow these s
 2. Run the installer
 
 3. When asked "What workloads to install", select:
-   - ✅ **Desktop development with C++**
+   -  **Desktop development with C++**
    
    ![Workload Selection](https://docs.microsoft.com/en-us/cpp/build/media/vscpp-concurrency-install-workload.png)
 
@@ -435,4 +435,4 @@ If you're stuck:
 3. Try WSL (Option 3) - it's the most reliable
 4. Google the exact error message
 
-Good luck! 🚀
+Good luck! 

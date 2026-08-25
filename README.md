@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📡 DPI Engine — Deep Packet Inspection System
+#  DPI Engine — Deep Packet Inspection System
 
 **A high-throughput C++17 packet analyzer that reconstructs TCP/UDP flows and classifies traffic via TLS SNI & HTTP Host inspection**
 
@@ -12,7 +12,7 @@
 
 ---
 
-## 📖 Overview
+##  Overview
 
 A C++17 packet analyzer that reads PCAP captures, reconstructs TCP/UDP flows, classifies traffic by application (via TLS SNI / HTTP Host inspection), and can selectively block traffic by app, IP, or domain — available in both a single-threaded and a multi-threaded (load-balancer + fast-path) implementation.
 
@@ -1123,7 +1123,7 @@ The key insight is that even HTTPS traffic leaks the destination domain in the T
 
 If you have questions about any part of this project, the code is well-commented and follows the same flow described in this document. Start with the simple version (`main_working.cpp`) to understand the concepts, then move to the multi-threaded version (`dpi_mt.cpp`) to see how parallelism is added.
 
-Happy learning! 🚀
+Happy learning! 
 
 ---
 
