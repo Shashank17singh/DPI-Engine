@@ -216,7 +216,7 @@ packet_analyzer/
 
 ## 5. The Journey of a Packet (Simple Version)
 
-`mermaid
+```mermaid
 graph TD
     A[PCAP File / Network Interface] -->|Raw Packets| B(Packet Reader)
     B -->|Parse Ethernet/IPv4| C(Flow Tracker)
@@ -239,7 +239,7 @@ graph TD
     class A,I,J io;
     class B,C,D core;
     class E,G,F,H logic;
-`
+```
 
 
 Let's trace a single packet through `main_working.cpp`:
