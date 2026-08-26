@@ -1,6 +1,6 @@
 <div align="center">
 
-#  DPI Engine — Deep Packet Inspection System
+#  DPI Engine - Deep Packet Inspection System
 
 **A high-throughput C++17 packet analyzer that reconstructs TCP/UDP flows and classifies traffic via TLS SNI & HTTP Host inspection**
 
@@ -14,7 +14,7 @@
 
 ##  Overview
 
-A C++17 packet analyzer that reads PCAP captures, reconstructs TCP/UDP flows, classifies traffic by application (via TLS SNI / HTTP Host inspection), and can selectively block traffic by app, IP, or domain — available in both a single-threaded and a multi-threaded (load-balancer + fast-path) implementation.
+A C++17 packet analyzer that reads PCAP captures, reconstructs TCP/UDP flows, classifies traffic by application (via TLS SNI / HTTP Host inspection), and can selectively block traffic by app, IP, or domain - available in both a single-threaded and a multi-threaded (load-balancer + fast-path) implementation.
 
 This document explains **everything** about this project - from basic networking concepts to the complete code architecture. After reading this, you should understand exactly how packets flow through the system without needing to read the code.
 
@@ -33,7 +33,7 @@ cmake --build build
 ./build/dpi_engine test_dpi.pcap output.pcap
 ```
 
-No external dependencies — just a C++17 compiler and CMake (or plain `g++`, see [Building and Running](#10-building-and-running)).
+No external dependencies - just a C++17 compiler and CMake (or plain `g++`, see [Building and Running](#10-building-and-running)).
 
 ---
 
@@ -932,7 +932,7 @@ Connection to YouTube:
 ### Prerequisites
 
 - **macOS/Linux** with a C++17 compiler (g++ or clang++)
-- **CMake 3.16+** (optional but recommended — see [Windows setup](WINDOWS_SETUP.md) for Windows)
+- **CMake 3.16+** (optional but recommended - see [Windows setup](WINDOWS_SETUP.md) for Windows)
 - No external libraries needed!
 
 ### Build with CMake (recommended)
