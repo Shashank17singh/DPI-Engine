@@ -1,9 +1,9 @@
 #ifndef SNI_EXTRACTOR_H
 #define SNI_EXTRACTOR_H
 
-#include <string>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace DPI {
@@ -11,9 +11,9 @@ namespace DPI {
 // ============================================================================
 // SNI Extractor - Parses TLS Client Hello to extract Server Name Indication
 // ============================================================================
-// 
+//
 // TLS Client Hello Structure (simplified):
-// 
+//
 // Record Layer:
 //   - Content Type (1 byte): 0x16 = Handshake
 //   - Version (2 bytes): 0x0301 = TLS 1.0, 0x0303 = TLS 1.2
@@ -45,27 +45,28 @@ namespace DPI {
 
 class SNIExtractor {
 public:
-    // Extract SNI from a TLS Client Hello packet
-    // payload should point to the start of TCP payload (after TCP header)
-    static std::optional<std::string> extract(const uint8_t* payload, size_t length);
-    
-    // Check if this looks like a TLS Client Hello
-    static bool isTLSClientHello(const uint8_t* payload, size_t length);
-    
-    // Extract all extensions (for debugging/logging)
-    static std::vector<std::pair<uint16_t, std::string>> extractExtensions(
-        const uint8_t* payload, size_t length);
+  // Extract SNI from a TLS Client Hello packet
+  // payload should point to the start of TCP payload (after TCP header)
+  static std::optional<std::string> extract(const uint8_t *payload,
+                                            size_t length);
+
+  // Check if this looks like a TLS Client Hello
+  static bool isTLSClientHello(const uint8_t *payload, size_t length);
+
+  // Extract all extensions (for debugging/logging)
+  static std::vector<std::pair<uint16_t, std::string>>
+  extractExtensions(const uint8_t *payload, size_t length);
 
 private:
-    // TLS Constants
-    static constexpr uint8_t CONTENT_TYPE_HANDSHAKE = 0x16;
-    static constexpr uint8_t HANDSHAKE_CLIENT_HELLO = 0x01;
-    static constexpr uint16_t EXTENSION_SNI = 0x0000;
-    static constexpr uint8_t SNI_TYPE_HOSTNAME = 0x00;
-    
-    // Helper to read big-endian values
-    static uint16_t readUint16BE(const uint8_t* data);
-    static uint32_t readUint24BE(const uint8_t* data);
+  // TLS Constants
+  static constexpr uint8_t CONTENT_TYPE_HANDSHAKE = 0x16;
+  static constexpr uint8_t HANDSHAKE_CLIENT_HELLO = 0x01;
+  static constexpr uint16_t EXTENSION_SNI = 0x0000;
+  static constexpr uint8_t SNI_TYPE_HOSTNAME = 0x00;
+
+  // Helper to read big-endian values
+  static uint16_t readUint16BE(const uint8_t *data);
+  static uint32_t readUint24BE(const uint8_t *data);
 };
 
 // ============================================================================
@@ -73,12 +74,13 @@ private:
 // ============================================================================
 class QUICSNIExtractor {
 public:
-    // QUIC Initial packets also contain TLS Client Hello (in CRYPTO frames)
-    // This is more complex as QUIC has its own framing
-    static std::optional<std::string> extract(const uint8_t* payload, size_t length);
-    
-    // Check if this looks like a QUIC Initial packet
-    static bool isQUICInitial(const uint8_t* payload, size_t length);
+  // QUIC Initial packets also contain TLS Client Hello (in CRYPTO frames)
+  // This is more complex as QUIC has its own framing
+  static std::optional<std::string> extract(const uint8_t *payload,
+                                            size_t length);
+
+  // Check if this looks like a QUIC Initial packet
+  static bool isQUICInitial(const uint8_t *payload, size_t length);
 };
 
 // ============================================================================
@@ -86,11 +88,12 @@ public:
 // ============================================================================
 class HTTPHostExtractor {
 public:
-    // Extract Host header from HTTP request
-    static std::optional<std::string> extract(const uint8_t* payload, size_t length);
-    
-    // Check if this looks like an HTTP request
-    static bool isHTTPRequest(const uint8_t* payload, size_t length);
+  // Extract Host header from HTTP request
+  static std::optional<std::string> extract(const uint8_t *payload,
+                                            size_t length);
+
+  // Check if this looks like an HTTP request
+  static bool isHTTPRequest(const uint8_t *payload, size_t length);
 };
 
 // ============================================================================
@@ -98,11 +101,12 @@ public:
 // ============================================================================
 class DNSExtractor {
 public:
-    // Extract queried domain from DNS request
-    static std::optional<std::string> extractQuery(const uint8_t* payload, size_t length);
-    
-    // Check if this is a DNS query (not response)
-    static bool isDNSQuery(const uint8_t* payload, size_t length);
+  // Extract queried domain from DNS request
+  static std::optional<std::string> extractQuery(const uint8_t *payload,
+                                                 size_t length);
+
+  // Check if this is a DNS query (not response)
+  static bool isDNSQuery(const uint8_t *payload, size_t length);
 };
 
 } // namespace DPI
