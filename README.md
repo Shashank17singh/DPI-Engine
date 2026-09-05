@@ -22,8 +22,8 @@ This document explains **everything** about this project - from basic networking
 
 ```bash
 # Clone and enter the repo
-git clone https://github.com/Shashank17singh/Packet_analyzer.git
-cd Packet_analyzer
+git clone https://github.com/Shashank17singh/DPI-Engine.git
+cd DPI-Engine
 
 # Build with CMake (builds both dpi_simple and dpi_engine)
 cmake -B build -DCMAKE_BUILD_TYPE=Release
