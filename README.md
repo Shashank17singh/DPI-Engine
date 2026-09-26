@@ -14,7 +14,7 @@
 
 ## Overview
 
-A high-performance Deep Packet Inspection (DPI) engine written in modern C++17, designed and implemented from scratch. The system ingests raw PCAP network captures, parses Ethernet, IPv4, TCP, and UDP headers to reconstruct stateful network flows (5-tuple), and performs application-layer protocol inspection. 
+Engineered a high-performance Deep Packet Inspection (DPI) engine in modern C++17. The system ingests raw PCAP network captures, parses Ethernet, IPv4, TCP, and UDP headers to reconstruct stateful network flows (5-tuple), and performs application-layer protocol inspection. 
 
 By analyzing the TLS Client Hello handshake (SNI extraction) and HTTP Host headers, the engine can accurately classify encrypted HTTPS traffic and selectively enforce firewall rules (Drop/Forward) based on Application Type, Domain Name, or Source IP. 
 
