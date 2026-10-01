@@ -15,8 +15,8 @@ This guide will help you build and run the DPI Engine on Windows. Follow these s
 2. Run the installer
 
 3. When asked "What workloads to install", select:
-   -  **Desktop development with C++**
-   
+   - **Desktop development with C++**
+
    ![Workload Selection](https://docs.microsoft.com/en-us/cpp/build/media/vscpp-concurrency-install-workload.png)
 
 4. Click "Install" and wait (this takes 10-20 minutes)
@@ -134,6 +134,7 @@ pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-make
 3. Under "System variables", find **"Path"**, click **"Edit"**
 
 4. Click **"New"** and add:
+
    ```
    C:\msys64\mingw64\bin
    ```
@@ -147,11 +148,13 @@ pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-make
 1. Open **Command Prompt** (cmd) or **PowerShell**
 
 2. Navigate to the project:
+
    ```cmd
    cd C:\path\to\packet_analyzer
    ```
 
 3. Build:
+
    ```cmd
    g++ -std=c++17 -O2 -I include -o dpi_engine.exe ^
        src/dpi_mt.cpp ^
@@ -182,6 +185,7 @@ WSL lets you run Linux inside Windows - easiest if you're comfortable with Linux
    - Right-click → "Run as administrator"
 
 2. Run:
+
    ```powershell
    wsl --install
    ```
@@ -262,30 +266,32 @@ Follow **Option 2** above to install MinGW-w64, then continue here.
 
 ```json
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Build DPI Engine",
-            "type": "shell",
-            "command": "g++",
-            "args": [
-                "-std=c++17",
-                "-O2",
-                "-I", "include",
-                "-o", "dpi_engine.exe",
-                "src/dpi_mt.cpp",
-                "src/pcap_reader.cpp",
-                "src/packet_parser.cpp",
-                "src/sni_extractor.cpp",
-                "src/types.cpp"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "problemMatcher": ["$gcc"]
-        }
-    ]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build DPI Engine",
+      "type": "shell",
+      "command": "g++",
+      "args": [
+        "-std=c++17",
+        "-O2",
+        "-I",
+        "include",
+        "-o",
+        "dpi_engine.exe",
+        "src/dpi_mt.cpp",
+        "src/pcap_reader.cpp",
+        "src/packet_parser.cpp",
+        "src/sni_extractor.cpp",
+        "src/types.cpp"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$gcc"]
+    }
+  ]
 }
 ```
 
@@ -312,6 +318,7 @@ Open terminal in VS Code (`Ctrl+``) and run:
 **Cause:** MinGW not installed or not in PATH
 
 **Fix:**
+
 1. Make sure you installed MinGW-w64 (Option 2, Step 1)
 2. Make sure you added to PATH (Option 2, Step 2)
 3. Restart your computer
@@ -322,6 +329,7 @@ Open terminal in VS Code (`Ctrl+``) and run:
 **Cause:** Visual Studio compiler not in PATH
 
 **Fix:**
+
 1. Open "Developer Command Prompt for VS 2022" (search in Start Menu)
 2. Navigate to project folder
 3. Run the build command from there
@@ -332,10 +340,12 @@ Open terminal in VS Code (`Ctrl+``) and run:
 
 **Fix:**
 Make sure you're in the `packet_analyzer` folder:
+
 ```cmd
 cd C:\full\path\to\packet_analyzer
 dir include
 ```
+
 You should see the .h files listed.
 
 ### Error: undefined reference to `std::thread`
@@ -343,6 +353,7 @@ You should see the .h files listed.
 **Cause:** Threading library not linked (MinGW)
 
 **Fix:** Add `-pthread` flag:
+
 ```cmd
 g++ -std=c++17 -pthread -O2 -I include -o dpi_engine.exe ...
 ```
@@ -352,11 +363,13 @@ g++ -std=c++17 -pthread -O2 -I include -o dpi_engine.exe ...
 **Cause:** Missing input file
 
 **Fix:** Make sure test_dpi.pcap exists:
+
 ```cmd
 dir test_dpi.pcap
 ```
 
 If missing, create it:
+
 ```cmd
 python generate_test_pcap.py
 ```
@@ -367,7 +380,8 @@ python generate_test_pcap.py
 
 **Cause:** Permission denied or file in use
 
-**Fix:** 
+**Fix:**
+
 1. Close any program that might have output.pcap open
 2. Try a different output filename:
    ```cmd
@@ -380,11 +394,11 @@ python generate_test_pcap.py
 
 ### Build Commands Summary
 
-| Method | Command |
-|--------|---------|
+| Method                 | Command                                                                                                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Visual Studio (cl)** | `cl /EHsc /std:c++17 /O2 /I include /Fe:dpi_engine.exe src\dpi_mt.cpp src\pcap_reader.cpp src\packet_parser.cpp src\sni_extractor.cpp src\types.cpp` |
-| **MinGW (g++)** | `g++ -std=c++17 -O2 -I include -o dpi_engine.exe src/dpi_mt.cpp src/pcap_reader.cpp src/packet_parser.cpp src/sni_extractor.cpp src/types.cpp` |
-| **WSL/Linux** | `g++ -std=c++17 -pthread -O2 -I include -o dpi_engine src/dpi_mt.cpp src/pcap_reader.cpp src/packet_parser.cpp src/sni_extractor.cpp src/types.cpp` |
+| **MinGW (g++)**        | `g++ -std=c++17 -O2 -I include -o dpi_engine.exe src/dpi_mt.cpp src/pcap_reader.cpp src/packet_parser.cpp src/sni_extractor.cpp src/types.cpp`       |
+| **WSL/Linux**          | `g++ -std=c++17 -pthread -O2 -I include -o dpi_engine src/dpi_mt.cpp src/pcap_reader.cpp src/packet_parser.cpp src/sni_extractor.cpp src/types.cpp`  |
 
 ### Run Commands
 
@@ -435,4 +449,4 @@ If you're stuck:
 3. Try WSL (Option 3) - it's the most reliable
 4. Google the exact error message
 
-Good luck! 
+Good luck!

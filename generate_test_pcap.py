@@ -2,16 +2,21 @@
 Generate a test PCAP file with various protocols for DPI testing.
 Includes TLS Client Hello with SNI, HTTP, DNS, etc.
 """
-import struct
+
 import random
+import struct
+
+
 class PCAPWriter:
     def __init__(self, filename):
         self.file = open(filename, "wb")
         self.write_global_header()
         self.timestamp = 1700000000
+
     def write_global_header(self):
         header = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
         self.file.write(header)
+
     def write_packet(self, data):
         ts_sec = self.timestamp
         ts_usec = random.randint(0, 999999)
@@ -19,14 +24,19 @@ class PCAPWriter:
         pkt_header = struct.pack("<IIII", ts_sec, ts_usec, len(data), len(data))
         self.file.write(pkt_header)
         self.file.write(data)
+
     def close(self):
         self.file.close()
+
+
 def create_ethernet_header(src_mac, dst_mac, ethertype=0x0800):
     return (
         bytes.fromhex(dst_mac.replace(":", ""))
         + bytes.fromhex(src_mac.replace(":", ""))
         + struct.pack(">H", ethertype)
     )
+
+
 def create_ip_header(src_ip, dst_ip, protocol, payload_len):
     version_ihl = 0x45
     tos = 0
@@ -49,6 +59,8 @@ def create_ip_header(src_ip, dst_ip, protocol, payload_len):
     header += bytes([int(x) for x in src_ip.split(".")])
     header += bytes([int(x) for x in dst_ip.split(".")])
     return header
+
+
 def create_tcp_header(src_port, dst_port, seq, ack, flags, payload_len=0):
     data_offset = 5 << 4
     window = 65535
@@ -66,10 +78,14 @@ def create_tcp_header(src_port, dst_port, seq, ack, flags, payload_len=0):
         checksum,
         urgent,
     )
+
+
 def create_udp_header(src_port, dst_port, payload_len):
     length = 8 + payload_len
     checksum = 0
     return struct.pack(">HHHH", src_port, dst_port, length, checksum)
+
+
 def create_tls_client_hello(sni):
     """Create a TLS Client Hello with SNI extension."""
     sni_bytes = sni.encode("ascii")
@@ -82,9 +98,7 @@ def create_tls_client_hello(sni):
     client_version = struct.pack(">H", 0x0303)
     random_bytes = bytes([random.randint(0, 255) for _ in range(32)])
     session_id = struct.pack("B", 0)
-    cipher_suites = struct.pack(">H", 4) + struct.pack(
-        ">HH", 0x1301, 0x1302
-    )
+    cipher_suites = struct.pack(">H", 4) + struct.pack(">HH", 0x1301, 0x1302)
     compression = struct.pack("BB", 1, 0)
     client_hello_body = (
         client_version
@@ -102,8 +116,12 @@ def create_tls_client_hello(sni):
     record += struct.pack(">H", len(handshake))
     record += handshake
     return record
+
+
 def create_http_request(host, path="/"):
     return f"GET {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: DPI-Test/1.0\r\nAccept: */*\r\n\r\n".encode()
+
+
 def create_dns_query(domain):
     txid = struct.pack(">H", random.randint(1, 65535))
     flags = struct.pack(">H", 0x0100)
@@ -114,6 +132,8 @@ def create_dns_query(domain):
     question += struct.pack("B", 0)
     question += struct.pack(">HH", 1, 1)
     return txid + flags + counts + question
+
+
 def main():
     writer = PCAPWriter("test_dpi.pcap")
     user_mac = "00:11:22:33:44:55"
@@ -154,22 +174,16 @@ def main():
         tcp = create_tcp_header(src_port, dst_port, seq_base, 0, 0x02)
         ip = create_ip_header(user_ip, dst_ip, 6, len(tcp))
         writer.write_packet(eth + ip + tcp)
-        tcp = create_tcp_header(
-            dst_port, src_port, seq_base + 1000, seq_base + 1, 0x12
-        )
+        tcp = create_tcp_header(dst_port, src_port, seq_base + 1000, seq_base + 1, 0x12)
         ip = create_ip_header(dst_ip, user_ip, 6, len(tcp))
         eth = create_ethernet_header(gateway_mac, user_mac)
         writer.write_packet(eth + ip + tcp)
         eth = create_ethernet_header(user_mac, gateway_mac)
-        tcp = create_tcp_header(
-            src_port, dst_port, seq_base + 1, seq_base + 1001, 0x10
-        )
+        tcp = create_tcp_header(src_port, dst_port, seq_base + 1, seq_base + 1001, 0x10)
         ip = create_ip_header(user_ip, dst_ip, 6, len(tcp))
         writer.write_packet(eth + ip + tcp)
         tls_data = create_tls_client_hello(sni)
-        tcp = create_tcp_header(
-            src_port, dst_port, seq_base + 1, seq_base + 1001, 0x18
-        )
+        tcp = create_tcp_header(src_port, dst_port, seq_base + 1, seq_base + 1001, 0x18)
         ip = create_ip_header(user_ip, dst_ip, 6, len(tcp) + len(tls_data))
         writer.write_packet(eth + ip + tcp + tls_data)
         seq_base += 10000
@@ -202,10 +216,12 @@ def main():
         writer.write_packet(eth + ip + tcp)
         seq_base += 1000
     writer.close()
-    print(f"Created test_dpi.pcap with test traffic")
+    print("Created test_dpi.pcap with test traffic")
     print(f"  - {len(tls_connections)} TLS connections with SNI")
     print(f"  - {len(http_connections)} HTTP connections")
     print(f"  - {len(dns_queries)} DNS queries")
     print(f"  - 5 packets from blocked IP {blocked_source_ip}")
+
+
 if __name__ == "__main__":
     main()
