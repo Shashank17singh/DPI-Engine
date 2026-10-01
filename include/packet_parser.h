@@ -8,15 +8,22 @@
 
 namespace PacketAnalyzer {
 
-// Ethernet Header (14 bytes)
-// This is the first layer - the "envelope" for the packet
+/**
+ * @brief Ethernet Header structure.
+ * 
+ * Represents the 14-byte Ethernet frame header, the first layer of the packet.
+ */
 struct EthernetHeader {
   std::array<uint8_t, 6> dest_mac; // Destination MAC address
   std::array<uint8_t, 6> src_mac;  // Source MAC address
   uint16_t ether_type;             // Type of payload (0x0800 = IPv4)
 };
 
-// IPv4 Header (20-60 bytes, usually 20)
+/**
+ * @brief IPv4 Header structure.
+ * 
+ * Represents the IPv4 header (usually 20 bytes).
+ */
 struct IPv4Header {
   uint8_t version_ihl;     // Version (4 bits) + Header Length (4 bits)
   uint8_t tos;             // Type of Service
@@ -31,7 +38,11 @@ struct IPv4Header {
                            // Options may follow if header length > 5
 };
 
-// TCP Header (20-60 bytes, usually 20)
+/**
+ * @brief TCP Header structure.
+ * 
+ * Represents the TCP header (usually 20 bytes).
+ */
 struct TCPHeader {
   uint16_t src_port;       // Source port
   uint16_t dest_port;      // Destination port
@@ -44,7 +55,11 @@ struct TCPHeader {
   uint16_t urgent_pointer; // Urgent pointer
 };
 
-// UDP Header (8 bytes - always fixed size)
+/**
+ * @brief UDP Header structure.
+ * 
+ * Represents the fixed 8-byte UDP header.
+ */
 struct UDPHeader {
   uint16_t src_port;  // Source port
   uint16_t dest_port; // Destination port
@@ -52,7 +67,11 @@ struct UDPHeader {
   uint16_t checksum;  // Checksum
 };
 
-// Parsed packet information - human-readable format
+/**
+ * @brief Parsed packet information.
+ * 
+ * Contains extracted headers and payload in a human-readable format.
+ */
 struct ParsedPacket {
   // Timestamps
   uint32_t timestamp_sec;
@@ -87,10 +106,20 @@ struct ParsedPacket {
   const uint8_t *payload_data = nullptr; // Points into original packet
 };
 
-// Class to parse raw packets
+/**
+ * @brief PacketParser class.
+ * 
+ * Parses raw packet data into the ParsedPacket structure.
+ */
 class PacketParser {
 public:
-  // Parse a raw packet and fill in the ParsedPacket structure
+  /**
+   * @brief Parse a raw packet.
+   * 
+   * @param raw The raw packet to parse.
+   * @param parsed The structure to fill with parsed data.
+   * @return true if parsing was successful, false otherwise.
+   */
   static bool parse(const RawPacket &raw, ParsedPacket &parsed);
 
   // Helper functions to convert to human-readable strings

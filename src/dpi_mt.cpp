@@ -25,9 +25,11 @@
 using namespace PacketAnalyzer;
 using namespace DPI;
 
-// =============================================================================
-// Thread-Safe Queue
-// =============================================================================
+/**
+ * @brief Thread-Safe Queue.
+ * 
+ * Provides a thread-safe wrapper around std::queue.
+ */
 template <typename T> class TSQueue {
 public:
   TSQueue(size_t max_size = 10000) : max_size_(max_size), shutdown_(false) {}
@@ -79,9 +81,11 @@ private:
   std::atomic<bool> shutdown_;
 };
 
-// =============================================================================
-// Packet Job - Contains all packet data (self-contained, no pointers)
-// =============================================================================
+/**
+ * @brief Packet Job structure.
+ * 
+ * Contains all packet data (self-contained, no pointers).
+ */
 struct Packet {
   uint32_t id;
   uint32_t ts_sec;
@@ -93,9 +97,11 @@ struct Packet {
   size_t payload_length;
 };
 
-// =============================================================================
-// Flow Entry
-// =============================================================================
+/**
+ * @brief Flow Entry structure.
+ * 
+ * Tracks state for a single network flow.
+ */
 struct FlowEntry {
   FiveTuple tuple;
   AppType app_type = AppType::UNKNOWN;
@@ -106,9 +112,11 @@ struct FlowEntry {
   bool classified = false;
 };
 
-// =============================================================================
-// Blocking Rules
-// =============================================================================
+/**
+ * @brief Blocking Rules manager.
+ * 
+ * Handles blocking by IP, AppType, and Domain.
+ */
 class Rules {
 public:
   void blockIP(const std::string &ip) {
@@ -169,9 +177,11 @@ private:
   std::vector<std::string> blocked_domains_;
 };
 
-// =============================================================================
-// Statistics (thread-safe)
-// =============================================================================
+/**
+ * @brief Thread-safe Statistics.
+ * 
+ * Tracks global and per-app packet statistics.
+ */
 struct Stats {
   std::atomic<uint64_t> total_packets{0};
   std::atomic<uint64_t> total_bytes{0};
@@ -194,9 +204,11 @@ struct Stats {
   }
 };
 
-// =============================================================================
-// Fast Path Processor (one per FP thread)
-// =============================================================================
+/**
+ * @brief Fast Path Processor.
+ * 
+ * Worker thread class to process and classify packets.
+ */
 class FastPath {
 public:
   FastPath(int id, Rules *rules, Stats *stats, TSQueue<Packet> *output_queue)
@@ -312,9 +324,11 @@ private:
   }
 };
 
-// =============================================================================
-// Load Balancer (one per LB thread)
-// =============================================================================
+/**
+ * @brief Load Balancer.
+ * 
+ * Distributes packets to Fast Path processors.
+ */
 class LoadBalancer {
 public:
   LoadBalancer(int id, std::vector<FastPath *> fps)
@@ -362,9 +376,11 @@ private:
   }
 };
 
-// =============================================================================
-// DPI Engine
-// =============================================================================
+/**
+ * @brief DPI Engine main controller.
+ * 
+ * Manages load balancers and fast path processors.
+ */
 class DPIEngine {
 public:
   struct Config {
@@ -637,9 +653,9 @@ private:
   }
 };
 
-// =============================================================================
-// Main
-// =============================================================================
+/**
+ * @brief Main execution entry points.
+ */
 void printUsage(const char *prog) {
   std::cout
       << R"(
