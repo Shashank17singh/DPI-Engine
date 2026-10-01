@@ -8,8 +8,11 @@
 
 namespace PacketAnalyzer {
 
-// PCAP Global Header (24 bytes)
-// This is at the very beginning of every .pcap file
+/**
+ * @brief PCAP Global Header structure.
+ * 
+ * Represents the 24-byte global header at the beginning of a .pcap file.
+ */
 struct PcapGlobalHeader {
   uint32_t magic_number;  // 0xa1b2c3d4 (or swapped for big-endian)
   uint16_t version_major; // Usually 2
@@ -20,8 +23,11 @@ struct PcapGlobalHeader {
   uint32_t network;       // Data link type (1 = Ethernet)
 };
 
-// PCAP Packet Header (16 bytes)
-// Each packet in the file starts with this header
+/**
+ * @brief PCAP Packet Header structure.
+ * 
+ * Represents the 16-byte header prepended to each packet in a .pcap file.
+ */
 struct PcapPacketHeader {
   uint32_t ts_sec;   // Timestamp seconds
   uint32_t ts_usec;  // Timestamp microseconds
@@ -29,28 +35,52 @@ struct PcapPacketHeader {
   uint32_t orig_len; // Actual length of packet
 };
 
-// Represents a single captured packet
+/**
+ * @brief Raw Packet structure.
+ * 
+ * Represents a single captured packet with its header and raw data.
+ */
 struct RawPacket {
   PcapPacketHeader header;
   std::vector<uint8_t> data; // The actual packet bytes
 };
 
-// Class to read PCAP files
+/**
+ * @brief PcapReader class.
+ * 
+ * Handles reading packets from a .pcap file.
+ */
 class PcapReader {
 public:
   PcapReader() = default;
   ~PcapReader();
 
-  // Open a pcap file for reading
+  /**
+   * @brief Open a pcap file for reading.
+   * 
+   * @param filename Path to the .pcap file.
+   * @return true if opened successfully, false otherwise.
+   */
   bool open(const std::string &filename);
 
-  // Close the file
+  /**
+   * @brief Close the currently open file.
+   */
   void close();
 
-  // Read the next packet, returns false if no more packets
+  /**
+   * @brief Read the next packet from the file.
+   * 
+   * @param packet Structure to hold the read packet.
+   * @return true if a packet was read, false if EOF or error.
+   */
   bool readNextPacket(RawPacket &packet);
 
-  // Get the global header info
+  /**
+   * @brief Get the global header info.
+   * 
+   * @return The PCAP global header.
+   */
   const PcapGlobalHeader &getGlobalHeader() const { return global_header_; }
 
   // Check if file is open
