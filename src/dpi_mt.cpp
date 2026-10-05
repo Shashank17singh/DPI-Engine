@@ -25,11 +25,6 @@
 using namespace PacketAnalyzer;
 using namespace DPI;
 
-/**
- * @brief Thread-Safe Queue.
- * 
- * Provides a thread-safe wrapper around std::queue.
- */
 template <typename T> class TSQueue {
 public:
   TSQueue(size_t max_size = 10000) : max_size_(max_size), shutdown_(false) {}
@@ -81,11 +76,6 @@ private:
   std::atomic<bool> shutdown_;
 };
 
-/**
- * @brief Packet Job structure.
- * 
- * Contains all packet data (self-contained, no pointers).
- */
 struct Packet {
   uint32_t id;
   uint32_t ts_sec;
@@ -97,11 +87,6 @@ struct Packet {
   size_t payload_length;
 };
 
-/**
- * @brief Flow Entry structure.
- * 
- * Tracks state for a single network flow.
- */
 struct FlowEntry {
   FiveTuple tuple;
   AppType app_type = AppType::UNKNOWN;
@@ -112,11 +97,6 @@ struct FlowEntry {
   bool classified = false;
 };
 
-/**
- * @brief Blocking Rules manager.
- * 
- * Handles blocking by IP, AppType, and Domain.
- */
 class Rules {
 public:
   void blockIP(const std::string &ip) {
@@ -177,11 +157,6 @@ private:
   std::vector<std::string> blocked_domains_;
 };
 
-/**
- * @brief Thread-safe Statistics.
- * 
- * Tracks global and per-app packet statistics.
- */
 struct Stats {
   std::atomic<uint64_t> total_packets{0};
   std::atomic<uint64_t> total_bytes{0};
@@ -204,11 +179,6 @@ struct Stats {
   }
 };
 
-/**
- * @brief Fast Path Processor.
- * 
- * Worker thread class to process and classify packets.
- */
 class FastPath {
 public:
   FastPath(int id, Rules *rules, Stats *stats, TSQueue<Packet> *output_queue)
@@ -251,7 +221,6 @@ private:
       processed_++;
       Packet &pkt = *pkt_opt;
 
-      // Get or create flow
       FlowEntry &flow = flows_[pkt.tuple];
       if (flow.packets == 0) {
         flow.tuple = pkt.tuple;
@@ -259,21 +228,17 @@ private:
       flow.packets++;
       flow.bytes += pkt.data.size();
 
-      // Try to classify if not done yet
       if (!flow.classified) {
         classifyFlow(pkt, flow);
       }
 
-      // Check blocking
       if (!flow.blocked) {
         flow.blocked =
             rules_->isBlocked(pkt.tuple.src_ip, flow.app_type, flow.sni);
       }
 
-      // Record stats
       stats_->recordApp(flow.app_type, flow.sni);
 
-      // Forward or drop
       if (flow.blocked) {
         stats_->dropped++;
       } else {
@@ -324,11 +289,6 @@ private:
   }
 };
 
-/**
- * @brief Load Balancer.
- * 
- * Distributes packets to Fast Path processors.
- */
 class LoadBalancer {
 public:
   LoadBalancer(int id, std::vector<FastPath *> fps)
@@ -366,7 +326,6 @@ private:
       if (!pkt_opt)
         continue;
 
-      // Hash to select FP
       FiveTupleHash hasher;
       size_t fp_idx = hasher(pkt_opt->tuple) % num_fps_;
 
@@ -376,11 +335,6 @@ private:
   }
 };
 
-/**
- * @brief DPI Engine main controller.
- * 
- * Manages load balancers and fast path processors.
- */
 class DPIEngine {
 public:
   struct Config {
@@ -404,13 +358,11 @@ public:
     std::cout << "╚════════════════════════════════════════════════════════════"
                  "══╝\n\n";
 
-    // Create FP threads
     for (int i = 0; i < total_fps; i++) {
       fps_.push_back(
           std::make_unique<FastPath>(i, &rules_, &stats_, &output_queue_));
     }
 
-    // Create LB threads, each managing a subset of FPs
     for (int lb = 0; lb < cfg.num_lbs; lb++) {
       std::vector<FastPath *> lb_fps;
       int start = lb * cfg.fps_per_lb;
@@ -426,29 +378,24 @@ public:
   void blockDomain(const std::string &dom) { rules_.blockDomain(dom); }
 
   bool process(const std::string &input_file, const std::string &output_file) {
-    // Open input
     PcapReader reader;
     if (!reader.open(input_file))
       return false;
 
-    // Open output
     std::ofstream output(output_file, std::ios::binary);
     if (!output.is_open()) {
       std::cerr << "Cannot open output file\n";
       return false;
     }
 
-    // Write PCAP header
     const auto &hdr = reader.getGlobalHeader();
     output.write(reinterpret_cast<const char *>(&hdr), sizeof(hdr));
 
-    // Start all threads
     for (auto &fp : fps_)
       fp->start();
     for (auto &lb : lbs_)
       lb->start();
 
-    // Start output writer thread
     std::atomic<bool> output_running{true};
     std::thread output_thread([&]() {
       while (output_running || output_queue_.size() > 0) {
@@ -468,7 +415,6 @@ public:
       }
     });
 
-    // Read and dispatch packets
     std::cout << "[Reader] Processing packets...\n";
     RawPacket raw;
     ParsedPacket parsed;
@@ -480,7 +426,6 @@ public:
       if (!parsed.has_ip || (!parsed.has_tcp && !parsed.has_udp))
         continue;
 
-      // Create packet
       Packet pkt;
       pkt.id = pkt_id++;
       pkt.ts_sec = raw.header.ts_sec;
@@ -488,7 +433,6 @@ public:
       pkt.tcp_flags = parsed.tcp_flags;
       pkt.data = std::move(raw.data);
 
-      // Parse 5-tuple
       auto parseIP = [](const std::string &ip) -> uint32_t {
         uint32_t result = 0;
         int octet = 0, shift = 0;
@@ -509,7 +453,6 @@ public:
       pkt.tuple.dst_port = parsed.dest_port;
       pkt.tuple.protocol = parsed.protocol;
 
-      // Calculate payload offset
       pkt.payload_offset = 14; // Ethernet
       if (pkt.data.size() > 14) {
         uint8_t ip_ihl = pkt.data[14] & 0x0F;
@@ -529,7 +472,6 @@ public:
         }
       }
 
-      // Update stats
       stats_.total_packets++;
       stats_.total_bytes += pkt.data.size();
       if (parsed.has_tcp)
@@ -537,7 +479,6 @@ public:
       else if (parsed.has_udp)
         stats_.udp_packets++;
 
-      // Dispatch to LB (hash-based)
       FiveTupleHash hasher;
       size_t lb_idx = hasher(pkt.tuple) % lbs_.size();
       lbs_[lb_idx]->queue().push(std::move(pkt));
@@ -546,10 +487,8 @@ public:
     std::cout << "[Reader] Done reading " << pkt_id << " packets\n";
     reader.close();
 
-    // Wait for queues to drain
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    // Stop all threads
     for (auto &lb : lbs_)
       lb->stop();
     for (auto &fp : fps_)
@@ -561,7 +500,6 @@ public:
 
     output.close();
 
-    // Print report
     printReport();
 
     return true;
@@ -599,7 +537,6 @@ private:
     std::cout << "║ Dropped:            " << std::setw(12)
               << stats_.dropped.load() << "                           ║\n";
 
-    // Thread stats
     std::cout
         << "╠══════════════════════════════════════════════════════════════╣\n";
     std::cout << "║ THREAD STATISTICS                                          "
@@ -613,7 +550,6 @@ private:
                 << fps_[i]->processed() << "                           ║\n";
     }
 
-    // App distribution
     std::cout
         << "╠══════════════════════════════════════════════════════════════╣\n";
     std::cout << "║                   APPLICATION BREAKDOWN                    "
@@ -643,7 +579,6 @@ private:
     std::cout
         << "╚══════════════════════════════════════════════════════════════╝\n";
 
-    // Detected SNIs
     if (!stats_.detected_snis.empty()) {
       std::cout << "\n[Detected Domains/SNIs]\n";
       for (const auto &[sni, app] : stats_.detected_snis) {
@@ -653,9 +588,6 @@ private:
   }
 };
 
-/**
- * @brief Main execution entry points.
- */
 void printUsage(const char *prog) {
   std::cout
       << R"(

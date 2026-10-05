@@ -15,7 +15,6 @@
 using namespace PacketAnalyzer;
 using namespace DPI;
 
-// Simplified connection tracking
 struct Flow {
   FiveTuple tuple;
   AppType app_type = AppType::UNKNOWN;
@@ -25,7 +24,6 @@ struct Flow {
   bool blocked = false;
 };
 
-// Blocking rules
 class BlockingRules {
 public:
   std::unordered_set<uint32_t> blocked_ips;
@@ -113,7 +111,6 @@ int main(int argc, char *argv[]) {
 
   BlockingRules rules;
 
-  // Parse options
   for (int i = 3; i < argc; i++) {
     std::string arg = argv[i];
     if (arg == "--block-ip" && i + 1 < argc) {
@@ -133,27 +130,22 @@ int main(int argc, char *argv[]) {
   std::cout
       << "╚══════════════════════════════════════════════════════════════╝\n\n";
 
-  // Open input
   PcapReader reader;
   if (!reader.open(input_file)) {
     return 1;
   }
 
-  // Open output
   std::ofstream output(output_file, std::ios::binary);
   if (!output.is_open()) {
     std::cerr << "Error: Cannot open output file\n";
     return 1;
   }
 
-  // Write PCAP header
   const auto &header = reader.getGlobalHeader();
   output.write(reinterpret_cast<const char *>(&header), sizeof(header));
 
-  // Flow table
   std::unordered_map<FiveTuple, Flow, FiveTupleHash> flows;
 
-  // Statistics
   uint64_t total_packets = 0;
   uint64_t forwarded = 0;
   uint64_t dropped = 0;
@@ -172,7 +164,6 @@ int main(int argc, char *argv[]) {
     if (!parsed.has_ip || (!parsed.has_tcp && !parsed.has_udp))
       continue;
 
-    // Create five-tuple
     FiveTuple tuple;
     auto parseIP = [](const std::string &ip) -> uint32_t {
       uint32_t result = 0;
@@ -194,7 +185,6 @@ int main(int argc, char *argv[]) {
     tuple.dst_port = parsed.dest_port;
     tuple.protocol = parsed.protocol;
 
-    // Get or create flow
     Flow &flow = flows[tuple];
     if (flow.packets == 0) {
       flow.tuple = tuple;
@@ -229,7 +219,6 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // HTTP Host extraction
     if ((flow.app_type == AppType::UNKNOWN || flow.app_type == AppType::HTTP) &&
         flow.sni.empty() && parsed.has_tcp && parsed.dest_port == 80) {
 
@@ -253,13 +242,11 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // DNS classification
     if (flow.app_type == AppType::UNKNOWN &&
         (parsed.dest_port == 53 || parsed.src_port == 53)) {
       flow.app_type = AppType::DNS;
     }
 
-    // Port-based fallback
     if (flow.app_type == AppType::UNKNOWN) {
       if (parsed.dest_port == 443)
         flow.app_type = AppType::HTTPS;
@@ -267,7 +254,6 @@ int main(int argc, char *argv[]) {
         flow.app_type = AppType::HTTP;
     }
 
-    // Check blocking rules
     if (!flow.blocked) {
       flow.blocked = rules.isBlocked(tuple.src_ip, flow.app_type, flow.sni);
       if (flow.blocked) {
@@ -279,15 +265,12 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // Update app stats
     app_stats[flow.app_type]++;
 
-    // Forward or drop
     if (flow.blocked) {
       dropped++;
     } else {
       forwarded++;
-      // Write to output
       PcapPacketHeader pkt_hdr;
       pkt_hdr.ts_sec = raw.header.ts_sec;
       pkt_hdr.ts_usec = raw.header.ts_usec;
@@ -302,7 +285,6 @@ int main(int argc, char *argv[]) {
   reader.close();
   output.close();
 
-  // Print report
   std::cout << "\n";
   std::cout
       << "╔══════════════════════════════════════════════════════════════╗\n";
@@ -325,7 +307,6 @@ int main(int argc, char *argv[]) {
   std::cout
       << "╠══════════════════════════════════════════════════════════════╣\n";
 
-  // Sort by count
   std::vector<std::pair<AppType, uint64_t>> sorted_apps(app_stats.begin(),
                                                         app_stats.end());
   std::sort(sorted_apps.begin(), sorted_apps.end(),
@@ -345,7 +326,6 @@ int main(int argc, char *argv[]) {
   std::cout
       << "╚══════════════════════════════════════════════════════════════╝\n";
 
-  // List unique SNIs
   std::cout << "\n[Detected Applications/Domains]\n";
   std::unordered_map<std::string, AppType> unique_snis;
   for (const auto &[tuple, flow] : flows) {
