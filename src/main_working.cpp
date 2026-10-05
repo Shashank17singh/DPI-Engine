@@ -182,11 +182,11 @@ int main(int argc, char *argv[]) {
         if (payload_offset < raw.data.size()) {
           size_t payload_len = raw.data.size() - payload_offset;
           if (payload_len > 5) { // Minimum TLS record header
-            auto sni = SNIExtractor::extract(raw.data.data() + payload_offset,
-                                             payload_len);
-            if (sni) {
-              flow.sni = *sni;
-              flow.app_type = sniToAppType(*sni);
+            string sni_val;
+            bool has_sni = SNIExtractor::extract(raw.data.data() + payload_offset, payload_len, sni_val);
+            if (has_sni) {
+              flow.sni = sni_val;
+              flow.app_type = sniToAppType(sni_val);
             }
           }
         }
@@ -206,11 +206,11 @@ int main(int argc, char *argv[]) {
 
         if (payload_offset < raw.data.size()) {
           size_t payload_len = raw.data.size() - payload_offset;
-          auto host = HTTPHostExtractor::extract(
-              raw.data.data() + payload_offset, payload_len);
-          if (host) {
-            flow.sni = *host;
-            flow.app_type = sniToAppType(*host);
+          string sni_val;
+          bool has_sni = HTTPHostExtractor::extract(raw.data.data() + payload_offset, payload_len, sni_val);
+          if (has_sni) {
+            flow.sni = sni_val;
+            flow.app_type = sniToAppType(sni_val);
           }
         }
       }
@@ -286,7 +286,9 @@ int main(int argc, char *argv[]) {
   sort(sorted_apps.begin(), sorted_apps.end(),
             [](const auto &a, const auto &b) { return a.second > b.second; });
 
-  for (const auto &[app, count] : sorted_apps) {
+  for (const auto& kv : sorted_apps) {
+    const auto& app = kv.first;
+    const auto& count = kv.second;
     double pct = 100.0 * count / total_packets;
     int bar_len = static_cast<int>(pct / 5);
     string bar(bar_len, '#');
@@ -302,12 +304,16 @@ int main(int argc, char *argv[]) {
 
   cout << "\n[Detected Applications/Domains]\n";
   unordered_map<string, AppType> unique_snis;
-  for (const auto &[tuple, flow] : flows) {
+  for (const auto& kv : flows) {
+    const auto& tuple = kv.first;
+    const auto& flow = kv.second;
     if (!flow.sni.empty()) {
       unique_snis[flow.sni] = flow.app_type;
     }
   }
-  for (const auto &[sni, app] : unique_snis) {
+  for (const auto& kv : unique_snis) {
+    const auto& sni = kv.first;
+    const auto& app = kv.second;
     cout << "  - " << sni << " -> " << appTypeToString(app) << "\n";
   }
 
