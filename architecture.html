@@ -1,226 +1,274 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Architecture - DPI Engine</title>
-              <meta name="color-scheme" content="dark">
-  <meta name="darkreader-lock">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Geist+Mono&family=Geist:wght@400;600&family=Instrument+Serif:ital@0;1&display=swap');
-    
-    :root {
-      color-scheme: dark;
-      --bg-body: #050505;
-      --bg-container: #0a0a0a;
-      --node-fill: #171717;
-      --node-stroke: #404040;
-      --node-text: #f5f5f5;
-      --node-sub: #a3a3a3;
-      --edge-stroke: #525252;
-      --edge-text: #a3a3a3;
-      --hover-node-stroke: #a3a3a3;
-      --hover-node-fill: #262626;
-      --hover-edge: #d4d4d4;
-    }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Architecture - DPI Engine</title>
+    <meta name="color-scheme" content="dark" />
+    <meta name="darkreader-lock" />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Geist+Mono&family=Geist:wght@400;600&family=Instrument+Serif:ital@0;1&display=swap");
 
-    body { 
-      margin: 0; 
-      padding: 2rem; 
-      font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
-      background-color: var(--bg-body); 
-      color: var(--node-text);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .diagram-container { 
-      width: 100%; 
-      max-width: 1200px;
-      overflow-x: auto; 
-      background-color: var(--bg-container); 
-      border: 1px solid #262626; 
-      border-radius: 12px; 
-      padding: 3rem; 
-      box-shadow: 0 20px 40px rgba(0,0,0,0.8);
-    }
-    
-    svg { 
-      width: 100%; 
-      min-width: 960px; 
-      display: block; 
-    }
+      :root {
+        color-scheme: dark;
+        --bg-body: #050505;
+        --bg-container: #0a0a0a;
+        --node-fill: #171717;
+        --node-stroke: #404040;
+        --node-text: #f5f5f5;
+        --node-sub: #a3a3a3;
+        --edge-stroke: #525252;
+        --edge-text: #a3a3a3;
+        --hover-node-stroke: #a3a3a3;
+        --hover-node-fill: #262626;
+        --hover-edge: #d4d4d4;
+      }
 
-    .node rect { 
-      fill: var(--node-fill); 
-      stroke: var(--node-stroke); 
-      stroke-width: 1.5; 
-      rx: 6; 
-      transition: all 0.2s ease;
-    }
-    .node:hover rect {
-      stroke: var(--hover-node-stroke);
-      fill: var(--hover-node-fill);
-    }
-    
-    .node text { 
-      fill: var(--node-text); 
-      font-size: 10px; 
-      font-weight: 600; 
-      transition: all 0.2s ease;
-      letter-spacing: 0.02em;
-    }
-    .node .sub { 
-      font-family: 'Geist Mono', 'Consolas', 'Courier New', monospace; 
-      font-size: 7.5px; 
-      font-weight: normal; 
-      fill: var(--node-sub); 
-    }
-    .node:hover text {
-      fill: #ffffff;
-    }
-    .node:hover .sub {
-      fill: #d4d4d4;
-    }
-    
-    .edge path { 
-      fill: none; 
-      stroke: var(--edge-stroke); 
-      stroke-width: 1.5; 
-      transition: all 0.2s ease;
-    }
-    .edge:hover path {
-      stroke: var(--hover-edge);
-      stroke-width: 2;
-    }
-    
-    .edge text { 
-      font-family: 'Geist Mono', 'Consolas', 'Courier New', monospace; 
-      font-size: 8px; 
-      fill: var(--edge-text); 
-      paint-order: stroke fill;
-      stroke: var(--bg-container);
-      stroke-width: 8px;
-      stroke-linejoin: round;
-      stroke-linecap: round;
-    }
-    
-    .title { 
-      font-family: 'Instrument Serif', Georgia, serif; 
-      font-size: 26px; 
-      fill: var(--node-text); 
-    }
-    .subtitle { 
-      font-family: 'Geist Mono', 'Consolas', 'Courier New', monospace; 
-      font-size: 9px; 
-      fill: #737373; 
-    }
-    
-    .zone { 
-      fill: rgba(255,255,255,0.02); 
-      stroke: rgba(255,255,255,0.1); 
-      stroke-width: 1; 
-      rx: 8; 
-    }
-    .zone-label { 
-      font-family: 'Geist Mono', 'Consolas', 'Courier New', monospace; 
-      font-size: 7px; 
-      fill: rgba(255,255,255,0.4); 
-      letter-spacing: 0.14em; 
-    }
+      body {
+        margin: 0;
+        padding: 2rem;
+        font-family:
+          "Geist",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Arial,
+          sans-serif;
+        background-color: var(--bg-body);
+        color: var(--node-text);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-    @keyframes flow {
-      to { stroke-dashoffset: -20; }
-    }
-    .edge path[stroke-dasharray] {
-      animation: flow 1.5s linear infinite;
-      stroke: var(--node-sub);
-    }
-  </style>
-</head>
-<body>
-  <div class="diagram-container">
-    <svg viewBox="0 0 960 600" role="img" aria-labelledby="title desc">
-      <title id="title">DPI Engine Architecture</title>
-      <desc id="desc">Deep Packet Inspection Flow and Architecture</desc>
-      
-                                    <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#525252" style="fill: context-stroke;" />
-        </marker>
-      </defs>
+      .diagram-container {
+        width: 100%;
+        max-width: 1200px;
+        overflow-x: auto;
+        background-color: var(--bg-container);
+        border: 1px solid #262626;
+        border-radius: 12px;
+        padding: 3rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+      }
 
-      <text x="40" y="60" class="title">DPI Engine</text>
-      <text x="40" y="80" class="subtitle">Multi-threaded C++17 Packet Analyzer</text>
+      svg {
+        width: 100%;
+        min-width: 960px;
+        display: block;
+      }
 
-      <!-- Zones -->
-      <rect x="40" y="120" width="200" height="400" class="zone" />
-      <text x="50" y="135" class="zone-label">INGESTION</text>
+      .node rect {
+        fill: var(--node-fill);
+        stroke: var(--node-stroke);
+        stroke-width: 1.5;
+        rx: 6;
+        transition: all 0.2s ease;
+      }
+      .node:hover rect {
+        stroke: var(--hover-node-stroke);
+        fill: var(--hover-node-fill);
+      }
 
-      <rect x="280" y="120" width="400" height="400" class="zone" />
-      <text x="290" y="135" class="zone-label">MULTI-THREADED PROCESSING</text>
+      .node text {
+        fill: var(--node-text);
+        font-size: 10px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        letter-spacing: 0.02em;
+      }
+      .node .sub {
+        font-family: "Geist Mono", "Consolas", "Courier New", monospace;
+        font-size: 7.5px;
+        font-weight: normal;
+        fill: var(--node-sub);
+      }
+      .node:hover text {
+        fill: #ffffff;
+      }
+      .node:hover .sub {
+        fill: #d4d4d4;
+      }
 
-      <rect x="720" y="120" width="200" height="400" class="zone" />
-      <text x="730" y="135" class="zone-label">DISPATCH & OUTPUT</text>
+      .edge path {
+        fill: none;
+        stroke: var(--edge-stroke);
+        stroke-width: 1.5;
+        transition: all 0.2s ease;
+      }
+      .edge:hover path {
+        stroke: var(--hover-edge);
+        stroke-width: 2;
+      }
 
-      <!-- Nodes -->
-      <g class="node" transform="translate(80, 200)">
-        <rect x="0" y="0" width="120" height="60" />
-        <text x="60" y="25" text-anchor="middle" >Raw PCAP File</text>
-        <text x="60" y="40" class="sub" text-anchor="middle" >Network Capture</text>
-      </g>
-      <g class="node" transform="translate(80, 340)">
-        <rect x="0" y="0" width="120" height="60" />
-        <text x="60" y="25" text-anchor="middle" >Reader Thread</text>
-        <text x="60" y="40" class="sub" text-anchor="middle" >I/O Handling</text>
-      </g>
+      .edge text {
+        font-family: "Geist Mono", "Consolas", "Courier New", monospace;
+        font-size: 8px;
+        fill: var(--edge-text);
+        paint-order: stroke fill;
+        stroke: var(--bg-container);
+        stroke-width: 8px;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+      }
 
-      <g class="node" transform="translate(320, 200)">
-        <rect x="0" y="0" width="140" height="60" />
-        <text x="70" y="25" text-anchor="middle" >Load Balancers</text>
-        <text x="70" y="40" class="sub" text-anchor="middle" >Consistent Hashing</text>
-      </g>
-      <g class="node" transform="translate(320, 340)">
-        <rect x="0" y="0" width="140" height="60" />
-        <text x="70" y="25" text-anchor="middle" >Fast Paths</text>
-        <text x="70" y="40" class="sub" text-anchor="middle" >Parallel Flow Proc.</text>
-      </g>
-      <g class="node" transform="translate(500, 270)">
-        <rect x="0" y="0" width="140" height="60" />
-        <text x="70" y="25" text-anchor="middle" >Classification</text>
-        <text x="70" y="40" class="sub" text-anchor="middle" >TLS SNI / HTTP L7</text>
-      </g>
+      .title {
+        font-family: "Instrument Serif", Georgia, serif;
+        font-size: 26px;
+        fill: var(--node-text);
+      }
+      .subtitle {
+        font-family: "Geist Mono", "Consolas", "Courier New", monospace;
+        font-size: 9px;
+        fill: #737373;
+      }
 
-      <g class="node" transform="translate(760, 200)">
-        <rect x="0" y="0" width="120" height="60" />
-        <text x="60" y="25" text-anchor="middle" >Filtered PCAP</text>
-        <text x="60" y="40" class="sub" text-anchor="middle" >Output</text>
-      </g>
-      <g class="node" transform="translate(760, 340)">
-        <rect x="0" y="0" width="120" height="60" />
-        <text x="60" y="25" text-anchor="middle" >Discarded Traffic</text>
-        <text x="60" y="40" class="sub" text-anchor="middle" >Blocked rules</text>
-      </g>
+      .zone {
+        fill: rgba(255, 255, 255, 0.02);
+        stroke: rgba(255, 255, 255, 0.1);
+        stroke-width: 1;
+        rx: 8;
+      }
+      .zone-label {
+        font-family: "Geist Mono", "Consolas", "Courier New", monospace;
+        font-size: 7px;
+        fill: rgba(255, 255, 255, 0.4);
+        letter-spacing: 0.14em;
+      }
 
-      <!-- Edges -->
-      <g class="edge">
-        <path d="M 140 260 L 140 340" marker-end="url(#arrow)" />
-        
-        <path d="M 200 370 L 260 370 L 260 230 L 320 230" marker-end="url(#arrow)" />
+      @keyframes flow {
+        to {
+          stroke-dashoffset: -20;
+        }
+      }
+      .edge path[stroke-dasharray] {
+        animation: flow 1.5s linear infinite;
+        stroke: var(--node-sub);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="diagram-container">
+      <svg viewBox="0 0 960 600" role="img" aria-labelledby="title desc">
+        <title id="title">DPI Engine Architecture</title>
+        <desc id="desc">Deep Packet Inspection Flow and Architecture</desc>
 
-        <path d="M 390 260 L 390 340" marker-end="url(#arrow)" />
+        <defs>
+          <marker
+            id="arrow"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path
+              d="M 0 0 L 10 5 L 0 10 z"
+              fill="#525252"
+              style="fill: context-stroke"
+            />
+          </marker>
+        </defs>
 
-        <path d="M 460 370 L 480 370 L 480 300 L 500 300" marker-end="url(#arrow)" />
-        
-        <path d="M 640 300 L 700 300 L 700 230 L 760 230" marker-end="url(#arrow)" />
-        <text x="700" y="233" text-anchor="middle" >Forward</text>
+        <text x="40" y="60" class="title">DPI Engine</text>
+        <text x="40" y="80" class="subtitle">
+          Multi-threaded C++17 Packet Analyzer
+        </text>
 
-        <path d="M 640 300 L 700 300 L 700 370 L 760 370" marker-end="url(#arrow)" />
-        <text x="700" y="373" text-anchor="middle" >Drop</text>
-      </g>
-    </svg>
-  </div>
-</body>
+        <!-- Zones -->
+        <rect x="40" y="120" width="200" height="400" class="zone" />
+        <text x="50" y="135" class="zone-label">INGESTION</text>
+
+        <rect x="280" y="120" width="400" height="400" class="zone" />
+        <text x="290" y="135" class="zone-label">
+          MULTI-THREADED PROCESSING
+        </text>
+
+        <rect x="720" y="120" width="200" height="400" class="zone" />
+        <text x="730" y="135" class="zone-label">DISPATCH & OUTPUT</text>
+
+        <!-- Nodes -->
+        <g class="node" transform="translate(80, 200)">
+          <rect x="0" y="0" width="120" height="60" />
+          <text x="60" y="25" text-anchor="middle">Raw PCAP File</text>
+          <text x="60" y="40" class="sub" text-anchor="middle">
+            Network Capture
+          </text>
+        </g>
+        <g class="node" transform="translate(80, 340)">
+          <rect x="0" y="0" width="120" height="60" />
+          <text x="60" y="25" text-anchor="middle">Reader Thread</text>
+          <text x="60" y="40" class="sub" text-anchor="middle">
+            I/O Handling
+          </text>
+        </g>
+
+        <g class="node" transform="translate(320, 200)">
+          <rect x="0" y="0" width="140" height="60" />
+          <text x="70" y="25" text-anchor="middle">Load Balancers</text>
+          <text x="70" y="40" class="sub" text-anchor="middle">
+            Consistent Hashing
+          </text>
+        </g>
+        <g class="node" transform="translate(320, 340)">
+          <rect x="0" y="0" width="140" height="60" />
+          <text x="70" y="25" text-anchor="middle">Fast Paths</text>
+          <text x="70" y="40" class="sub" text-anchor="middle">
+            Parallel Flow Proc.
+          </text>
+        </g>
+        <g class="node" transform="translate(500, 270)">
+          <rect x="0" y="0" width="140" height="60" />
+          <text x="70" y="25" text-anchor="middle">Classification</text>
+          <text x="70" y="40" class="sub" text-anchor="middle">
+            TLS SNI / HTTP L7
+          </text>
+        </g>
+
+        <g class="node" transform="translate(760, 200)">
+          <rect x="0" y="0" width="120" height="60" />
+          <text x="60" y="25" text-anchor="middle">Filtered PCAP</text>
+          <text x="60" y="40" class="sub" text-anchor="middle">Output</text>
+        </g>
+        <g class="node" transform="translate(760, 340)">
+          <rect x="0" y="0" width="120" height="60" />
+          <text x="60" y="25" text-anchor="middle">Discarded Traffic</text>
+          <text x="60" y="40" class="sub" text-anchor="middle">
+            Blocked rules
+          </text>
+        </g>
+
+        <!-- Edges -->
+        <g class="edge">
+          <path d="M 140 260 L 140 340" marker-end="url(#arrow)" />
+
+          <path
+            d="M 200 370 L 260 370 L 260 230 L 320 230"
+            marker-end="url(#arrow)"
+          />
+
+          <path d="M 390 260 L 390 340" marker-end="url(#arrow)" />
+
+          <path
+            d="M 460 370 L 480 370 L 480 300 L 500 300"
+            marker-end="url(#arrow)"
+          />
+
+          <path
+            d="M 640 300 L 700 300 L 700 230 L 760 230"
+            marker-end="url(#arrow)"
+          />
+          <text x="700" y="233" text-anchor="middle">Forward</text>
+
+          <path
+            d="M 640 300 L 700 300 L 700 370 L 760 370"
+            marker-end="url(#arrow)"
+          />
+          <text x="700" y="373" text-anchor="middle">Drop</text>
+        </g>
+      </svg>
+    </div>
+  </body>
 </html>
