@@ -5,15 +5,17 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 namespace DPI {
 
 class SNIExtractor {
 public:
-  static bool extract(const uint8_t *payload, size_t length, std::string &out_str);
+  static bool extract(const uint8_t *payload, size_t length, string &out_str);
 
   static bool isTLSClientHello(const uint8_t *payload, size_t length);
 
-  static std::vector<std::pair<uint16_t, std::string>>
+  static vector<pair<uint16_t, string>>
   extractExtensions(const uint8_t *payload, size_t length);
 
 private:
@@ -30,21 +32,21 @@ private:
 
 class QUICSNIExtractor {
 public:
-  static bool extract(const uint8_t *payload, size_t length, std::string &out_str);
+  static bool extract(const uint8_t *payload, size_t length, string &out_str);
 
   static bool isQUICInitial(const uint8_t *payload, size_t length);
 };
 
 class HTTPHostExtractor {
 public:
-  static bool extract(const uint8_t *payload, size_t length, std::string &out_str);
+  static bool extract(const uint8_t *payload, size_t length, string &out_str);
 
   static bool isHTTPRequest(const uint8_t *payload, size_t length);
 };
 
 class DNSExtractor {
 public:
-  static bool extractQuery(const uint8_t *payload, size_t length, std::string &out_str);
+  static bool extractQuery(const uint8_t *payload, size_t length, string &out_str);
 
   static bool isDNSQuery(const uint8_t *payload, size_t length);
 };

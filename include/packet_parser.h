@@ -6,11 +6,13 @@
 #include <cstdint>
 #include <string>
 
+using namespace std;
+
 namespace PacketAnalyzer {
 
 struct EthernetHeader {
-  std::array<uint8_t, 6> dest_mac; // Destination MAC address
-  std::array<uint8_t, 6> src_mac;  // Source MAC address
+  array<uint8_t, 6> dest_mac; // Destination MAC address
+  array<uint8_t, 6> src_mac;  // Source MAC address
   uint16_t ether_type;             // Type of payload (0x0800 = IPv4)
 };
 
@@ -53,15 +55,15 @@ struct ParsedPacket {
   uint32_t timestamp_usec;
 
   // Ethernet layer
-  std::string src_mac;
-  std::string dest_mac;
+  string src_mac;
+  string dest_mac;
   uint16_t ether_type;
 
   // IP layer (if present)
   bool has_ip = false;
   uint8_t ip_version;
-  std::string src_ip;
-  std::string dest_ip;
+  string src_ip;
+  string dest_ip;
   uint8_t protocol; // TCP=6, UDP=17, ICMP=1
   uint8_t ttl;
 
@@ -86,10 +88,10 @@ public:
   static bool parse(const RawPacket &raw, ParsedPacket &parsed);
 
   // Helper functions to convert to human-readable strings
-  static std::string macToString(const uint8_t *mac);
-  static std::string ipToString(uint32_t ip);
-  static std::string protocolToString(uint8_t protocol);
-  static std::string tcpFlagsToString(uint8_t flags);
+  static string macToString(const uint8_t *mac);
+  static string ipToString(uint32_t ip);
+  static string protocolToString(uint8_t protocol);
+  static string tcpFlagsToString(uint8_t flags);
 
 private:
   static bool parseEthernet(const uint8_t *data, size_t len,

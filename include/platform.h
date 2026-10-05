@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+using namespace std;
+
 namespace PortableNet {
 
 inline uint16_t swapBytes16(uint16_t value) {

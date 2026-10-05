@@ -5,9 +5,6 @@ using namespace std;
 
 namespace DPI {
 
-// ============================================================================
-// TLS SNI Extractor Implementation
-// ============================================================================
 
 uint16_t SNIExtractor::readUint16BE(const uint8_t *data) {
   return (static_cast<uint16_t>(data[0]) << 8) | data[1];
@@ -127,9 +124,6 @@ SNIExtractor::extractExtensions(const uint8_t *payload, size_t length) {
   return extensions;
 }
 
-// ============================================================================
-// HTTP Host Header Extractor Implementation
-// ============================================================================
 
 bool HTTPHostExtractor::isHTTPRequest(const uint8_t *payload, size_t length) {
   if (length < 4)
@@ -196,9 +190,6 @@ bool HTTPHostExtractor::extract(const uint8_t *payload, size_t length, string &o
   return false;
 }
 
-// ============================================================================
-// DNS Extractor Implementation
-// ============================================================================
 
 bool DNSExtractor::isDNSQuery(const uint8_t *payload, size_t length) {
   // Minimum DNS header is 12 bytes

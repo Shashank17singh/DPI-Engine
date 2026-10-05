@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 namespace PacketAnalyzer {
 
 struct PcapGlobalHeader {
@@ -27,7 +29,7 @@ struct PcapPacketHeader {
 
 struct RawPacket {
   PcapPacketHeader header;
-  std::vector<uint8_t> data; // The actual packet bytes
+  vector<uint8_t> data; // The actual packet bytes
 };
 
 class PcapReader {
@@ -35,7 +37,7 @@ public:
   PcapReader() = default;
   ~PcapReader();
 
-  bool open(const std::string &filename);
+  bool open(const string &filename);
 
   void close();
 
@@ -50,7 +52,7 @@ public:
   bool needsByteSwap() const { return needs_byte_swap_; }
 
 private:
-  std::ifstream file_;
+  ifstream file_;
   PcapGlobalHeader global_header_;
   bool needs_byte_swap_ = false;
 
