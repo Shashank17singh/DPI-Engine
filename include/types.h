@@ -11,11 +11,6 @@
 
 namespace DPI {
 
-/**
- * @brief Five-Tuple structure.
- * 
- * Uniquely identifies a connection/flow.
- */
 struct FiveTuple {
   uint32_t src_ip;
   uint32_t dst_ip;
@@ -37,11 +32,6 @@ struct FiveTuple {
   std::string toString() const;
 };
 
-/**
- * @brief Hash function for FiveTuple.
- * 
- * Used for load balancing and hash map lookups.
- */
 struct FiveTupleHash {
   size_t operator()(const FiveTuple &tuple) const {
     // Simple but effective hash combining all fields
@@ -58,9 +48,6 @@ struct FiveTupleHash {
   }
 };
 
-/**
- * @brief Application Classification enum.
- */
 enum class AppType {
   UNKNOWN = 0,
   HTTP,
@@ -93,16 +80,8 @@ enum class AppType {
 std::string appTypeToString(AppType type);
 AppType sniToAppType(const std::string &sni);
 
-/**
- * @brief Connection State enum.
- */
 enum class ConnectionState { NEW, ESTABLISHED, CLASSIFIED, BLOCKED, CLOSED };
 
-/**
- * @brief Packet Action enum.
- * 
- * Defines what to do with a processed packet.
- */
 enum class PacketAction {
   FORWARD, // Send to internet
   DROP,    // Block/drop the packet
@@ -110,11 +89,6 @@ enum class PacketAction {
   LOG_ONLY // Forward but log
 };
 
-/**
- * @brief Connection Entry structure.
- * 
- * Tracked per flow.
- */
 struct Connection {
   FiveTuple tuple;
   ConnectionState state = ConnectionState::NEW;
@@ -137,11 +111,6 @@ struct Connection {
   bool fin_seen = false;
 };
 
-/**
- * @brief Packet wrapper structure.
- * 
- * Used for queue passing.
- */
 struct PacketJob {
   uint32_t packet_id;
   FiveTuple tuple;
@@ -159,11 +128,6 @@ struct PacketJob {
   uint32_t ts_usec;
 };
 
-/**
- * @brief Statistics structure.
- * 
- * Uses atomics, protected by mutex externally if needed.
- */
 struct DPIStats {
   std::atomic<uint64_t> total_packets{0};
   std::atomic<uint64_t> total_bytes{0};
