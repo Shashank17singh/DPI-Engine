@@ -168,16 +168,16 @@ This project is licensed under the [MIT License](LICENSE).
 
 | File                      | Purpose / Details                                                            |
 | ------------------------- | ---------------------------------------------------------------------------- |
-| `CMakeLists.txt`          | Core component logic and implementation details.                             |
-| `generate_test_pcap.py`   | Core component logic and implementation details.                             |
-| `include\packet_parser.h` | Ethernet Header (14 bytes)                                                   |
-| `include\pcap_reader.h`   | PCAP Global Header (24 bytes)                                                |
-| `include\platform.h`      | Platform-specific includes and definitions for cross-platform compatibility  |
-| `include\sni_extractor.h` | ============================================================================ |
-| `include\types.h`         | ============================================================================ |
-| `src\dpi_mt.cpp`          | Multi-threaded DPI Engine - Fixed Version                                    |
-| `src\main_working.cpp`    | Working DPI Engine - Simplified but functional                               |
-| `src\packet_parser.cpp`   | Use portable byte order functions                                            |
-| `src\pcap_reader.cpp`     | Magic numbers for PCAP files                                                 |
-| `src\sni_extractor.cpp`   | ============================================================================ |
-| `src\types.cpp`           | Format IP addresses                                                          |
+| `CMakeLists.txt`          | Build configuration and dependencies.                                        |
+| `generate_test_pcap.py`   | Python script to generate mock PCAP files for local testing.                 |
+| `include\packet_parser.h` | Ethernet, IPv4, TCP, and UDP header definitions.                             |
+| `include\pcap_reader.h`   | Structs for parsing the PCAP file format.                                    |
+| `include\platform.h`      | Cross-platform network byte order macros.                                    |
+| `include\sni_extractor.h` | Definitions for L7 payload extractors (TLS, HTTP, DNS, QUIC).                |
+| `include\types.h`         | Data structures for tracking network flows and rules.                        |
+| `src\dpi_mt.cpp`          | Multi-threaded engine using Load Balancers and Fast Paths.                   |
+| `src\main_working.cpp`    | Single-threaded reference implementation.                                    |
+| `src\packet_parser.cpp`   | Network layer parsing logic.                                                 |
+| `src\pcap_reader.cpp`     | Logic for reading and validating PCAP files.                                 |
+| `src\sni_extractor.cpp`   | L7 extraction logic for application classification.                          |
+| `src\types.cpp`           | IP formatting and application type string helpers.                           |
