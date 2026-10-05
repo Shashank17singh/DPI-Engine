@@ -10,7 +10,6 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
-#include <optional>
 #include <queue>
 #include <thread>
 #include <unordered_map>
@@ -45,10 +44,10 @@ public:
     unique_lock<mutex> lock(mutex_);
     if (!not_empty_.wait_for(lock, chrono::milliseconds(timeout_ms),
                              [this] { return !queue_.empty() || shutdown_; })) {
-      return nullopt;
+      return false;
     }
     if (queue_.empty())
-      return nullopt;
+      return false;
     T item = move(queue_.front());
     queue_.pop();
     not_full_.notify_one();
@@ -240,10 +239,11 @@ private:
     // Try SNI extraction for HTTPS
     if (pkt.tuple.dst_port == 443 && pkt.payload_length > 5) {
       const uint8_t *payload = pkt.data.data() + pkt.payload_offset;
-      auto sni = SNIExtractor::extract(payload, pkt.payload_length);
-      if (sni) {
-        flow.sni = *sni;
-        flow.app_type = sniToAppType(*sni);
+      string sni_val;
+      bool has_sni = SNIExtractor::extract(payload, pkt.payload_length, sni_val);
+      if (has_sni) {
+        flow.sni = sni_val;
+        flow.app_type = sniToAppType(sni_val);
         flow.classified = true;
         return;
       }
@@ -252,10 +252,11 @@ private:
     // Try HTTP Host extraction
     if (pkt.tuple.dst_port == 80 && pkt.payload_length > 10) {
       const uint8_t *payload = pkt.data.data() + pkt.payload_offset;
-      auto host = HTTPHostExtractor::extract(payload, pkt.payload_length);
-      if (host) {
-        flow.sni = *host;
-        flow.app_type = sniToAppType(*host);
+      string sni_val;
+      bool has_sni = HTTPHostExtractor::extract(payload, pkt.payload_length, sni_val);
+      if (has_sni) {
+        flow.sni = sni_val;
+        flow.app_type = sniToAppType(sni_val);
         flow.classified = true;
         return;
       }
@@ -539,7 +540,9 @@ private:
               [](const auto &a, const auto &b) { return a.second > b.second; });
 
     uint64_t total = stats_.total_packets.load();
-    for (const auto &[app, count] : sorted_apps) {
+    for (const auto& kv : sorted_apps) {
+      const auto& app = kv.first;
+      const auto& count = kv.second;
       double pct = total > 0 ? (100.0 * count / total) : 0;
       int bar = static_cast<int>(pct / 5);
       string bar_str(bar, '#');
@@ -555,7 +558,9 @@ private:
 
     if (!stats_.detected_snis.empty()) {
       cout << "\n[Detected Domains/SNIs]\n";
-      for (const auto &[sni, app] : stats_.detected_snis) {
+      for (const auto& kv : stats_.detected_snis) {
+      const auto& sni = kv.first;
+      const auto& app = kv.second;
         cout << "  - " << sni << " -> " << appTypeToString(app) << "\n";
       }
     }

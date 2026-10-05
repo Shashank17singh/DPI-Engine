@@ -2,7 +2,6 @@
 #define SNI_EXTRACTOR_H
 
 #include <cstdint>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -10,8 +9,7 @@ namespace DPI {
 
 class SNIExtractor {
 public:
-  static std::optional<std::string> extract(const uint8_t *payload,
-                                            size_t length);
+  static bool extract(const uint8_t *payload, size_t length, std::string &out_str);
 
   static bool isTLSClientHello(const uint8_t *payload, size_t length);
 
@@ -32,24 +30,21 @@ private:
 
 class QUICSNIExtractor {
 public:
-  static std::optional<std::string> extract(const uint8_t *payload,
-                                            size_t length);
+  static bool extract(const uint8_t *payload, size_t length, std::string &out_str);
 
   static bool isQUICInitial(const uint8_t *payload, size_t length);
 };
 
 class HTTPHostExtractor {
 public:
-  static std::optional<std::string> extract(const uint8_t *payload,
-                                            size_t length);
+  static bool extract(const uint8_t *payload, size_t length, std::string &out_str);
 
   static bool isHTTPRequest(const uint8_t *payload, size_t length);
 };
 
 class DNSExtractor {
 public:
-  static std::optional<std::string> extractQuery(const uint8_t *payload,
-                                                 size_t length);
+  static bool extractQuery(const uint8_t *payload, size_t length, std::string &out_str);
 
   static bool isDNSQuery(const uint8_t *payload, size_t length);
 };

@@ -40,10 +40,9 @@ bool SNIExtractor::isTLSClientHello(const uint8_t *payload, size_t length) {
   return true;
 }
 
-optional<string> SNIExtractor::extract(const uint8_t *payload,
-                                                 size_t length) {
+bool SNIExtractor::extract(const uint8_t *payload, size_t length, string &out_str) {
   if (!isTLSClientHello(payload, length)) {
-    return nullopt;
+    return false;
   }
 
   size_t offset = 5;
@@ -56,22 +55,22 @@ optional<string> SNIExtractor::extract(const uint8_t *payload,
   offset += 32;
 
   if (offset >= length)
-    return nullopt;
+    return false;
   uint8_t session_id_length = payload[offset];
   offset += 1 + session_id_length;
 
   if (offset + 2 > length)
-    return nullopt;
+    return false;
   uint16_t cipher_suites_length = readUint16BE(payload + offset);
   offset += 2 + cipher_suites_length;
 
   if (offset >= length)
-    return nullopt;
+    return false;
   uint8_t compression_methods_length = payload[offset];
   offset += 1 + compression_methods_length;
 
   if (offset + 2 > length)
-    return nullopt;
+    return false;
   uint16_t extensions_length = readUint16BE(payload + offset);
   offset += 2;
 
@@ -107,13 +106,14 @@ optional<string> SNIExtractor::extract(const uint8_t *payload,
 
       string sni(reinterpret_cast<const char *>(payload + offset + 5),
                       sni_length);
-      return sni;
+      out_str = sni;
+      return true;
     }
 
     offset += extension_length;
   }
 
-  return nullopt;
+  return false;
 }
 
 vector<pair<uint16_t, string>>
@@ -148,10 +148,9 @@ bool HTTPHostExtractor::isHTTPRequest(const uint8_t *payload, size_t length) {
   return false;
 }
 
-optional<string> HTTPHostExtractor::extract(const uint8_t *payload,
-                                                      size_t length) {
+bool HTTPHostExtractor::extract(const uint8_t *payload, size_t length, string &out_str) {
   if (!isHTTPRequest(payload, length)) {
-    return nullopt;
+    return false;
   }
 
   const char *host_header = "Host: ";
@@ -188,12 +187,13 @@ optional<string> HTTPHostExtractor::extract(const uint8_t *payload,
           host = host.substr(0, colon_pos);
         }
 
-        return host;
+        out_str = host;
+        return true;
       }
     }
   }
 
-  return nullopt;
+  return false;
 }
 
 // ============================================================================
@@ -218,10 +218,9 @@ bool DNSExtractor::isDNSQuery(const uint8_t *payload, size_t length) {
   return true;
 }
 
-optional<string> DNSExtractor::extractQuery(const uint8_t *payload,
-                                                      size_t length) {
+bool DNSExtractor::extractQuery(const uint8_t *payload, size_t length, string &out_str) {
   if (!isDNSQuery(payload, length)) {
-    return nullopt;
+    return false;
   }
 
   size_t offset = 12;
@@ -250,7 +249,9 @@ optional<string> DNSExtractor::extractQuery(const uint8_t *payload,
     offset += label_length;
   }
 
-  return domain.empty() ? nullopt : optional<string>(domain);
+  if (domain.empty()) return false;
+  out_str = domain;
+  return true;
 }
 
 bool QUICSNIExtractor::isQUICInitial(const uint8_t *payload, size_t length) {
@@ -269,10 +270,9 @@ bool QUICSNIExtractor::isQUICInitial(const uint8_t *payload, size_t length) {
   return true;
 }
 
-optional<string> QUICSNIExtractor::extract(const uint8_t *payload,
-                                                     size_t length) {
+bool QUICSNIExtractor::extract(const uint8_t *payload, size_t length, string &out_str) {
   if (!isQUICInitial(payload, length)) {
-    return nullopt;
+    return false;
   }
 
   // Search for TLS Client Hello pattern within the QUIC packet
@@ -280,13 +280,15 @@ optional<string> QUICSNIExtractor::extract(const uint8_t *payload,
   for (size_t i = 0; i + 50 < length; i++) {
     if (payload[i] == 0x01) { // Client Hello handshake type
       // Try to extract SNI starting from here
-      auto result = SNIExtractor::extract(payload + i - 5, length - i + 5);
-      if (result)
-        return result;
+      string result;
+      if (i >= 5 && SNIExtractor::extract(payload + i - 5, length - i + 5, result)) {
+        out_str = result;
+        return true;
+      }
     }
   }
 
-  return nullopt;
+  return false;
 }
 
 } // namespace DPI
