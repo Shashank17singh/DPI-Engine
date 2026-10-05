@@ -101,7 +101,7 @@ class Rules {
 public:
   void blockIP(const std::string &ip) {
     std::lock_guard<std::mutex> lock(mutex_);
-    blocked_ips_.insert(parseIP(ip));
+    blocked_ips_.insert(DPI::Utils::parseIP(ip));
     std::cout << "[Rules] Blocked IP: " << ip << "\n";
   }
 
@@ -137,20 +137,6 @@ public:
   }
 
 private:
-  static uint32_t parseIP(const std::string &ip) {
-    uint32_t result = 0;
-    int octet = 0, shift = 0;
-    for (char c : ip) {
-      if (c == '.') {
-        result |= (octet << shift);
-        shift += 8;
-        octet = 0;
-      } else if (c >= '0' && c <= '9')
-        octet = octet * 10 + (c - '0');
-    }
-    return result | (octet << shift);
-  }
-
   mutable std::mutex mutex_;
   std::unordered_set<uint32_t> blocked_ips_;
   std::unordered_set<AppType> blocked_apps_;
@@ -433,22 +419,8 @@ public:
       pkt.tcp_flags = parsed.tcp_flags;
       pkt.data = std::move(raw.data);
 
-      auto parseIP = [](const std::string &ip) -> uint32_t {
-        uint32_t result = 0;
-        int octet = 0, shift = 0;
-        for (char c : ip) {
-          if (c == '.') {
-            result |= (octet << shift);
-            shift += 8;
-            octet = 0;
-          } else if (c >= '0' && c <= '9')
-            octet = octet * 10 + (c - '0');
-        }
-        return result | (octet << shift);
-      };
-
-      pkt.tuple.src_ip = parseIP(parsed.src_ip);
-      pkt.tuple.dst_ip = parseIP(parsed.dest_ip);
+      pkt.tuple.src_ip = DPI::Utils::parseIP(parsed.src_ip);
+      pkt.tuple.dst_ip = DPI::Utils::parseIP(parsed.dest_ip);
       pkt.tuple.src_port = parsed.src_port;
       pkt.tuple.dst_port = parsed.dest_port;
       pkt.tuple.protocol = parsed.protocol;

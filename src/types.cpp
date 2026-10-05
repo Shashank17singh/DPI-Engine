@@ -1,27 +1,41 @@
 #include "types.h"
 #include <algorithm>
 #include <cctype>
-#include <iomanip>
 #include <sstream>
 
 namespace DPI {
 
+namespace Utils {
+
+uint32_t parseIP(const std::string &ip) {
+  uint32_t result = 0;
+  int octet = 0, shift = 0;
+  for (char c : ip) {
+    if (c == '.') {
+      result |= (octet << shift);
+      shift += 8;
+      octet = 0;
+    } else if (c >= '0' && c <= '9') {
+      octet = octet * 10 + (c - '0');
+    }
+  }
+  return result | (octet << shift);
+}
+
+std::string formatIP(uint32_t ip) {
+  std::ostringstream s;
+  s << ((ip >> 0) & 0xFF) << "." << ((ip >> 8) & 0xFF) << "."
+    << ((ip >> 16) & 0xFF) << "." << ((ip >> 24) & 0xFF);
+  return s.str();
+}
+
+} // namespace Utils
+
 std::string FiveTuple::toString() const {
   std::ostringstream ss;
-
-  auto formatIP = [](uint32_t ip) {
-    std::ostringstream s;
-    s << ((ip >> 0) & 0xFF) << "." << ((ip >> 8) & 0xFF) << "."
-      << ((ip >> 16) & 0xFF) << "." << ((ip >> 24) & 0xFF);
-    return s.str();
-  };
-
-  ss << formatIP(src_ip) << ":" << src_port << " -> " << formatIP(dst_ip) << ":"
-     << dst_port << " ("
-     << (protocol == 6    ? "TCP"
-         : protocol == 17 ? "UDP"
-                          : "?")
-     << ")";
+  ss << Utils::formatIP(src_ip) << ":" << src_port << " -> "
+     << Utils::formatIP(dst_ip) << ":" << dst_port << " ("
+     << (protocol == 6 ? "TCP" : (protocol == 17 ? "UDP" : "?")) << ")";
 
   return ss.str();
 }

@@ -31,7 +31,7 @@ public:
   std::vector<std::string> blocked_domains; // Simple substring match
 
   void blockIP(const std::string &ip) {
-    uint32_t addr = parseIP(ip);
+    uint32_t addr = DPI::Utils::parseIP(ip);
     blocked_ips.insert(addr);
     std::cout << "[Rules] Blocked IP: " << ip << "\n";
   }
@@ -64,20 +64,6 @@ public:
     return false;
   }
 
-private:
-  static uint32_t parseIP(const std::string &ip) {
-    uint32_t result = 0;
-    int octet = 0, shift = 0;
-    for (char c : ip) {
-      if (c == '.') {
-        result |= (octet << shift);
-        shift += 8;
-        octet = 0;
-      } else if (c >= '0' && c <= '9')
-        octet = octet * 10 + (c - '0');
-    }
-    return result | (octet << shift);
-  }
 };
 
 void printUsage(const char *prog) {
@@ -165,22 +151,8 @@ int main(int argc, char *argv[]) {
       continue;
 
     FiveTuple tuple;
-    auto parseIP = [](const std::string &ip) -> uint32_t {
-      uint32_t result = 0;
-      int octet = 0, shift = 0;
-      for (char c : ip) {
-        if (c == '.') {
-          result |= (octet << shift);
-          shift += 8;
-          octet = 0;
-        } else if (c >= '0' && c <= '9')
-          octet = octet * 10 + (c - '0');
-      }
-      return result | (octet << shift);
-    };
-
-    tuple.src_ip = parseIP(parsed.src_ip);
-    tuple.dst_ip = parseIP(parsed.dest_ip);
+    tuple.src_ip = DPI::Utils::parseIP(parsed.src_ip);
+    tuple.dst_ip = DPI::Utils::parseIP(parsed.dest_ip);
     tuple.src_port = parsed.src_port;
     tuple.dst_port = parsed.dest_port;
     tuple.protocol = parsed.protocol;

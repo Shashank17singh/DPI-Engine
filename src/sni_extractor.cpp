@@ -1,5 +1,4 @@
 #include "sni_extractor.h"
-#include <algorithm>
 #include <cstring>
 
 namespace DPI {

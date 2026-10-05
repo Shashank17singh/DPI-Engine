@@ -5,11 +5,15 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
-#include <optional>
 #include <string>
 #include <vector>
 
 namespace DPI {
+
+namespace Utils {
+uint32_t parseIP(const std::string &ip);
+std::string formatIP(uint32_t ip);
+}
 
 struct FiveTuple {
   uint32_t src_ip;
