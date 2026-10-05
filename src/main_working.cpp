@@ -12,13 +12,15 @@
 #include "sni_extractor.h"
 #include "types.h"
 
+using namespace std;
+
 using namespace PacketAnalyzer;
 using namespace DPI;
 
 struct Flow {
   FiveTuple tuple;
   AppType app_type = AppType::UNKNOWN;
-  std::string sni;
+  string sni;
   uint64_t packets = 0;
   uint64_t bytes = 0;
   bool blocked = false;
@@ -26,39 +28,39 @@ struct Flow {
 
 class BlockingRules {
 public:
-  std::unordered_set<uint32_t> blocked_ips;
-  std::unordered_set<AppType> blocked_apps;
-  std::vector<std::string> blocked_domains; // Simple substring match
+  unordered_set<uint32_t> blocked_ips;
+  unordered_set<AppType> blocked_apps;
+  vector<string> blocked_domains; // Simple substring match
 
-  void blockIP(const std::string &ip) {
+  void blockIP(const string &ip) {
     uint32_t addr = DPI::Utils::parseIP(ip);
     blocked_ips.insert(addr);
-    std::cout << "[Rules] Blocked IP: " << ip << "\n";
+    cout << "[Rules] Blocked IP: " << ip << "\n";
   }
 
-  void blockApp(const std::string &app) {
+  void blockApp(const string &app) {
     for (int i = 0; i < static_cast<int>(AppType::APP_COUNT); i++) {
       if (appTypeToString(static_cast<AppType>(i)) == app) {
         blocked_apps.insert(static_cast<AppType>(i));
-        std::cout << "[Rules] Blocked app: " << app << "\n";
+        cout << "[Rules] Blocked app: " << app << "\n";
         return;
       }
     }
-    std::cerr << "[Rules] Unknown app: " << app << "\n";
+    cerr << "[Rules] Unknown app: " << app << "\n";
   }
 
-  void blockDomain(const std::string &domain) {
+  void blockDomain(const string &domain) {
     blocked_domains.push_back(domain);
-    std::cout << "[Rules] Blocked domain: " << domain << "\n";
+    cout << "[Rules] Blocked domain: " << domain << "\n";
   }
 
-  bool isBlocked(uint32_t src_ip, AppType app, const std::string &sni) const {
+  bool isBlocked(uint32_t src_ip, AppType app, const string &sni) const {
     if (blocked_ips.count(src_ip))
       return true;
     if (blocked_apps.count(app))
       return true;
     for (const auto &dom : blocked_domains) {
-      if (sni.find(dom) != std::string::npos)
+      if (sni.find(dom) != string::npos)
         return true;
     }
     return false;
@@ -67,7 +69,7 @@ public:
 };
 
 void printUsage(const char *prog) {
-  std::cout
+  cout
       << R"(
 DPI Engine - Deep Packet Inspection System
 ==========================================
@@ -92,13 +94,13 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  std::string input_file = argv[1];
-  std::string output_file = argv[2];
+  string input_file = argv[1];
+  string output_file = argv[2];
 
   BlockingRules rules;
 
   for (int i = 3; i < argc; i++) {
-    std::string arg = argv[i];
+    string arg = argv[i];
     if (arg == "--block-ip" && i + 1 < argc) {
       rules.blockIP(argv[++i]);
     } else if (arg == "--block-app" && i + 1 < argc) {
@@ -108,12 +110,12 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  std::cout << "\n";
-  std::cout
+  cout << "\n";
+  cout
       << "╔══════════════════════════════════════════════════════════════╗\n";
-  std::cout
+  cout
       << "║                    DPI ENGINE v1.0                            ║\n";
-  std::cout
+  cout
       << "╚══════════════════════════════════════════════════════════════╝\n\n";
 
   PcapReader reader;
@@ -121,26 +123,26 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  std::ofstream output(output_file, std::ios::binary);
+  ofstream output(output_file, ios::binary);
   if (!output.is_open()) {
-    std::cerr << "Error: Cannot open output file\n";
+    cerr << "Error: Cannot open output file\n";
     return 1;
   }
 
   const auto &header = reader.getGlobalHeader();
   output.write(reinterpret_cast<const char *>(&header), sizeof(header));
 
-  std::unordered_map<FiveTuple, Flow, FiveTupleHash> flows;
+  unordered_map<FiveTuple, Flow, FiveTupleHash> flows;
 
   uint64_t total_packets = 0;
   uint64_t forwarded = 0;
   uint64_t dropped = 0;
-  std::unordered_map<AppType, uint64_t> app_stats;
+  unordered_map<AppType, uint64_t> app_stats;
 
   RawPacket raw;
   ParsedPacket parsed;
 
-  std::cout << "[DPI] Processing packets...\n";
+  cout << "[DPI] Processing packets...\n";
 
   while (reader.readNextPacket(raw)) {
     total_packets++;
@@ -229,11 +231,11 @@ int main(int argc, char *argv[]) {
     if (!flow.blocked) {
       flow.blocked = rules.isBlocked(tuple.src_ip, flow.app_type, flow.sni);
       if (flow.blocked) {
-        std::cout << "[BLOCKED] " << parsed.src_ip << " -> " << parsed.dest_ip
+        cout << "[BLOCKED] " << parsed.src_ip << " -> " << parsed.dest_ip
                   << " (" << appTypeToString(flow.app_type);
         if (!flow.sni.empty())
-          std::cout << ": " << flow.sni;
-        std::cout << ")\n";
+          cout << ": " << flow.sni;
+        cout << ")\n";
       }
     }
 
@@ -257,59 +259,59 @@ int main(int argc, char *argv[]) {
   reader.close();
   output.close();
 
-  std::cout << "\n";
-  std::cout
+  cout << "\n";
+  cout
       << "╔══════════════════════════════════════════════════════════════╗\n";
-  std::cout
+  cout
       << "║                      PROCESSING REPORT                       ║\n";
-  std::cout
+  cout
       << "╠══════════════════════════════════════════════════════════════╣\n";
-  std::cout << "║ Total Packets:      " << std::setw(10) << total_packets
+  cout << "║ Total Packets:      " << setw(10) << total_packets
             << "                             ║\n";
-  std::cout << "║ Forwarded:          " << std::setw(10) << forwarded
+  cout << "║ Forwarded:          " << setw(10) << forwarded
             << "                             ║\n";
-  std::cout << "║ Dropped:            " << std::setw(10) << dropped
+  cout << "║ Dropped:            " << setw(10) << dropped
             << "                             ║\n";
-  std::cout << "║ Active Flows:       " << std::setw(10) << flows.size()
+  cout << "║ Active Flows:       " << setw(10) << flows.size()
             << "                             ║\n";
-  std::cout
+  cout
       << "╠══════════════════════════════════════════════════════════════╣\n";
-  std::cout
+  cout
       << "║                    APPLICATION BREAKDOWN                     ║\n";
-  std::cout
+  cout
       << "╠══════════════════════════════════════════════════════════════╣\n";
 
-  std::vector<std::pair<AppType, uint64_t>> sorted_apps(app_stats.begin(),
+  vector<pair<AppType, uint64_t>> sorted_apps(app_stats.begin(),
                                                         app_stats.end());
-  std::sort(sorted_apps.begin(), sorted_apps.end(),
+  sort(sorted_apps.begin(), sorted_apps.end(),
             [](const auto &a, const auto &b) { return a.second > b.second; });
 
   for (const auto &[app, count] : sorted_apps) {
     double pct = 100.0 * count / total_packets;
     int bar_len = static_cast<int>(pct / 5);
-    std::string bar(bar_len, '#');
+    string bar(bar_len, '#');
 
-    std::cout << "║ " << std::setw(15) << std::left << appTypeToString(app)
-              << std::setw(8) << std::right << count << " " << std::setw(5)
-              << std::fixed << std::setprecision(1) << pct << "% "
-              << std::setw(20) << std::left << bar << "  ║\n";
+    cout << "║ " << setw(15) << left << appTypeToString(app)
+              << setw(8) << right << count << " " << setw(5)
+              << fixed << setprecision(1) << pct << "% "
+              << setw(20) << left << bar << "  ║\n";
   }
 
-  std::cout
+  cout
       << "╚══════════════════════════════════════════════════════════════╝\n";
 
-  std::cout << "\n[Detected Applications/Domains]\n";
-  std::unordered_map<std::string, AppType> unique_snis;
+  cout << "\n[Detected Applications/Domains]\n";
+  unordered_map<string, AppType> unique_snis;
   for (const auto &[tuple, flow] : flows) {
     if (!flow.sni.empty()) {
       unique_snis[flow.sni] = flow.app_type;
     }
   }
   for (const auto &[sni, app] : unique_snis) {
-    std::cout << "  - " << sni << " -> " << appTypeToString(app) << "\n";
+    cout << "  - " << sni << " -> " << appTypeToString(app) << "\n";
   }
 
-  std::cout << "\nOutput written to: " << output_file << "\n";
+  cout << "\nOutput written to: " << output_file << "\n";
 
   return 0;
 }

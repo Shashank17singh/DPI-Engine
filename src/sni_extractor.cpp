@@ -1,6 +1,8 @@
 #include "sni_extractor.h"
 #include <cstring>
 
+using namespace std;
+
 namespace DPI {
 
 // ============================================================================
@@ -38,10 +40,10 @@ bool SNIExtractor::isTLSClientHello(const uint8_t *payload, size_t length) {
   return true;
 }
 
-std::optional<std::string> SNIExtractor::extract(const uint8_t *payload,
+optional<string> SNIExtractor::extract(const uint8_t *payload,
                                                  size_t length) {
   if (!isTLSClientHello(payload, length)) {
-    return std::nullopt;
+    return nullopt;
   }
 
   size_t offset = 5;
@@ -54,22 +56,22 @@ std::optional<std::string> SNIExtractor::extract(const uint8_t *payload,
   offset += 32;
 
   if (offset >= length)
-    return std::nullopt;
+    return nullopt;
   uint8_t session_id_length = payload[offset];
   offset += 1 + session_id_length;
 
   if (offset + 2 > length)
-    return std::nullopt;
+    return nullopt;
   uint16_t cipher_suites_length = readUint16BE(payload + offset);
   offset += 2 + cipher_suites_length;
 
   if (offset >= length)
-    return std::nullopt;
+    return nullopt;
   uint8_t compression_methods_length = payload[offset];
   offset += 1 + compression_methods_length;
 
   if (offset + 2 > length)
-    return std::nullopt;
+    return nullopt;
   uint16_t extensions_length = readUint16BE(payload + offset);
   offset += 2;
 
@@ -103,7 +105,7 @@ std::optional<std::string> SNIExtractor::extract(const uint8_t *payload,
       if (sni_length > extension_length - 5)
         break;
 
-      std::string sni(reinterpret_cast<const char *>(payload + offset + 5),
+      string sni(reinterpret_cast<const char *>(payload + offset + 5),
                       sni_length);
       return sni;
     }
@@ -111,13 +113,13 @@ std::optional<std::string> SNIExtractor::extract(const uint8_t *payload,
     offset += extension_length;
   }
 
-  return std::nullopt;
+  return nullopt;
 }
 
-std::vector<std::pair<uint16_t, std::string>>
+vector<pair<uint16_t, string>>
 SNIExtractor::extractExtensions(const uint8_t *payload, size_t length) {
 
-  std::vector<std::pair<uint16_t, std::string>> extensions;
+  vector<pair<uint16_t, string>> extensions;
 
   // Similar parsing logic as extract(), but collect all extensions
   // ... (abbreviated for brevity)
@@ -138,7 +140,7 @@ bool HTTPHostExtractor::isHTTPRequest(const uint8_t *payload, size_t length) {
                            "DELE", "PATC", "OPTI"};
 
   for (const char *method : methods) {
-    if (std::memcmp(payload, method, 4) == 0) {
+    if (memcmp(payload, method, 4) == 0) {
       return true;
     }
   }
@@ -146,10 +148,10 @@ bool HTTPHostExtractor::isHTTPRequest(const uint8_t *payload, size_t length) {
   return false;
 }
 
-std::optional<std::string> HTTPHostExtractor::extract(const uint8_t *payload,
+optional<string> HTTPHostExtractor::extract(const uint8_t *payload,
                                                       size_t length) {
   if (!isHTTPRequest(payload, length)) {
-    return std::nullopt;
+    return nullopt;
   }
 
   const char *host_header = "Host: ";
@@ -177,12 +179,12 @@ std::optional<std::string> HTTPHostExtractor::extract(const uint8_t *payload,
       }
 
       if (end > start) {
-        std::string host(reinterpret_cast<const char *>(payload + start),
+        string host(reinterpret_cast<const char *>(payload + start),
                          end - start);
 
         // Remove port if present
         size_t colon_pos = host.find(':');
-        if (colon_pos != std::string::npos) {
+        if (colon_pos != string::npos) {
           host = host.substr(0, colon_pos);
         }
 
@@ -191,7 +193,7 @@ std::optional<std::string> HTTPHostExtractor::extract(const uint8_t *payload,
     }
   }
 
-  return std::nullopt;
+  return nullopt;
 }
 
 // ============================================================================
@@ -216,14 +218,14 @@ bool DNSExtractor::isDNSQuery(const uint8_t *payload, size_t length) {
   return true;
 }
 
-std::optional<std::string> DNSExtractor::extractQuery(const uint8_t *payload,
+optional<string> DNSExtractor::extractQuery(const uint8_t *payload,
                                                       size_t length) {
   if (!isDNSQuery(payload, length)) {
-    return std::nullopt;
+    return nullopt;
   }
 
   size_t offset = 12;
-  std::string domain;
+  string domain;
 
   while (offset < length) {
     uint8_t label_length = payload[offset];
@@ -243,12 +245,12 @@ std::optional<std::string> DNSExtractor::extractQuery(const uint8_t *payload,
     if (!domain.empty()) {
       domain += '.';
     }
-    domain += std::string(reinterpret_cast<const char *>(payload + offset),
+    domain += string(reinterpret_cast<const char *>(payload + offset),
                           label_length);
     offset += label_length;
   }
 
-  return domain.empty() ? std::nullopt : std::optional<std::string>(domain);
+  return domain.empty() ? nullopt : optional<string>(domain);
 }
 
 bool QUICSNIExtractor::isQUICInitial(const uint8_t *payload, size_t length) {
@@ -267,10 +269,10 @@ bool QUICSNIExtractor::isQUICInitial(const uint8_t *payload, size_t length) {
   return true;
 }
 
-std::optional<std::string> QUICSNIExtractor::extract(const uint8_t *payload,
+optional<string> QUICSNIExtractor::extract(const uint8_t *payload,
                                                      size_t length) {
   if (!isQUICInitial(payload, length)) {
-    return std::nullopt;
+    return nullopt;
   }
 
   // Search for TLS Client Hello pattern within the QUIC packet
@@ -284,7 +286,7 @@ std::optional<std::string> QUICSNIExtractor::extract(const uint8_t *payload,
     }
   }
 
-  return std::nullopt;
+  return nullopt;
 }
 
 } // namespace DPI

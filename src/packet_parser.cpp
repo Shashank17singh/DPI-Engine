@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <sstream>
 
+using namespace std;
+
 // Use portable byte order functions
 using PortableNet::netToHost16;
 using PortableNet::netToHost32;
@@ -102,11 +104,11 @@ bool PacketParser::parseIPv4(const uint8_t *data, size_t len,
   parsed.protocol = ip_data[9];
 
   uint32_t src_ip;
-  std::memcpy(&src_ip, ip_data + 12, 4);
+  memcpy(&src_ip, ip_data + 12, 4);
   parsed.src_ip = ipToString(src_ip);
 
   uint32_t dest_ip;
-  std::memcpy(&dest_ip, ip_data + 16, 4);
+  memcpy(&dest_ip, ip_data + 16, 4);
   parsed.dest_ip = ipToString(dest_ip);
 
   parsed.has_ip = true;
@@ -171,27 +173,27 @@ bool PacketParser::parseUDP(const uint8_t *data, size_t len,
   return true;
 }
 
-std::string PacketParser::macToString(const uint8_t *mac) {
-  std::ostringstream ss;
-  ss << std::hex << std::setfill('0');
+string PacketParser::macToString(const uint8_t *mac) {
+  ostringstream ss;
+  ss << hex << setfill('0');
   for (int i = 0; i < 6; i++) {
     if (i > 0)
       ss << ":";
-    ss << std::setw(2) << static_cast<int>(mac[i]);
+    ss << setw(2) << static_cast<int>(mac[i]);
   }
   return ss.str();
 }
 
-std::string PacketParser::ipToString(uint32_t ip) {
+string PacketParser::ipToString(uint32_t ip) {
   // IP is stored in network byte order (big-endian)
   // We need to extract each byte
-  std::ostringstream ss;
+  ostringstream ss;
   ss << ((ip >> 0) & 0xFF) << "." << ((ip >> 8) & 0xFF) << "."
      << ((ip >> 16) & 0xFF) << "." << ((ip >> 24) & 0xFF);
   return ss.str();
 }
 
-std::string PacketParser::protocolToString(uint8_t protocol) {
+string PacketParser::protocolToString(uint8_t protocol) {
   switch (protocol) {
   case Protocol::ICMP:
     return "ICMP";
@@ -200,12 +202,12 @@ std::string PacketParser::protocolToString(uint8_t protocol) {
   case Protocol::UDP:
     return "UDP";
   default:
-    return "Unknown(" + std::to_string(protocol) + ")";
+    return "Unknown(" + to_string(protocol) + ")";
   }
 }
 
-std::string PacketParser::tcpFlagsToString(uint8_t flags) {
-  std::string result;
+string PacketParser::tcpFlagsToString(uint8_t flags) {
+  string result;
   if (flags & TCPFlags::SYN)
     result += "SYN ";
   if (flags & TCPFlags::ACK)

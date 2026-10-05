@@ -2,6 +2,8 @@
 #include <cstring>
 #include <iostream>
 
+using namespace std;
+
 namespace PacketAnalyzer {
 
 // Magic numbers for PCAP files
@@ -10,20 +12,20 @@ constexpr uint32_t PCAP_MAGIC_SWAPPED = 0xd4c3b2a1; // Swapped byte order
 
 PcapReader::~PcapReader() { close(); }
 
-bool PcapReader::open(const std::string &filename) {
+bool PcapReader::open(const string &filename) {
   // Close any previously opened file
   close();
 
-  file_.open(filename, std::ios::binary);
+  file_.open(filename, ios::binary);
   if (!file_.is_open()) {
-    std::cerr << "Error: Could not open file: " << filename << std::endl;
+    cerr << "Error: Could not open file: " << filename << endl;
     return false;
   }
 
   file_.read(reinterpret_cast<char *>(&global_header_),
              sizeof(PcapGlobalHeader));
   if (!file_.good()) {
-    std::cerr << "Error: Could not read PCAP global header" << std::endl;
+    cerr << "Error: Could not read PCAP global header" << endl;
     close();
     return false;
   }
@@ -37,18 +39,18 @@ bool PcapReader::open(const std::string &filename) {
     global_header_.snaplen = maybeSwap32(global_header_.snaplen);
     global_header_.network = maybeSwap32(global_header_.network);
   } else {
-    std::cerr << "Error: Invalid PCAP magic number: 0x" << std::hex
-              << global_header_.magic_number << std::dec << std::endl;
+    cerr << "Error: Invalid PCAP magic number: 0x" << hex
+              << global_header_.magic_number << dec << endl;
     close();
     return false;
   }
 
-  std::cout << "Opened PCAP file: " << filename << std::endl;
-  std::cout << "  Version: " << global_header_.version_major << "."
-            << global_header_.version_minor << std::endl;
-  std::cout << "  Snaplen: " << global_header_.snaplen << " bytes" << std::endl;
-  std::cout << "  Link type: " << global_header_.network
-            << (global_header_.network == 1 ? " (Ethernet)" : "") << std::endl;
+  cout << "Opened PCAP file: " << filename << endl;
+  cout << "  Version: " << global_header_.version_major << "."
+            << global_header_.version_minor << endl;
+  cout << "  Snaplen: " << global_header_.snaplen << " bytes" << endl;
+  cout << "  Link type: " << global_header_.network
+            << (global_header_.network == 1 ? " (Ethernet)" : "") << endl;
 
   return true;
 }
@@ -82,8 +84,8 @@ bool PcapReader::readNextPacket(RawPacket &packet) {
   // Sanity check on packet length
   if (packet.header.incl_len > global_header_.snaplen ||
       packet.header.incl_len > 65535) {
-    std::cerr << "Error: Invalid packet length: " << packet.header.incl_len
-              << std::endl;
+    cerr << "Error: Invalid packet length: " << packet.header.incl_len
+              << endl;
     return false;
   }
 
@@ -91,7 +93,7 @@ bool PcapReader::readNextPacket(RawPacket &packet) {
   file_.read(reinterpret_cast<char *>(packet.data.data()),
              packet.header.incl_len);
   if (!file_.good()) {
-    std::cerr << "Error: Could not read packet data" << std::endl;
+    cerr << "Error: Could not read packet data" << endl;
     return false;
   }
 

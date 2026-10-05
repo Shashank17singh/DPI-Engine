@@ -22,6 +22,8 @@
 #include "sni_extractor.h"
 #include "types.h"
 
+using namespace std;
+
 using namespace PacketAnalyzer;
 using namespace DPI;
 
@@ -30,50 +32,50 @@ public:
   TSQueue(size_t max_size = 10000) : max_size_(max_size), shutdown_(false) {}
 
   void push(T item) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    unique_lock<mutex> lock(mutex_);
     not_full_.wait(lock,
                    [this] { return queue_.size() < max_size_ || shutdown_; });
     if (shutdown_)
       return;
-    queue_.push(std::move(item));
+    queue_.push(move(item));
     not_empty_.notify_one();
   }
 
-  std::optional<T> pop(int timeout_ms = 100) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    if (!not_empty_.wait_for(lock, std::chrono::milliseconds(timeout_ms),
+  optional<T> pop(int timeout_ms = 100) {
+    unique_lock<mutex> lock(mutex_);
+    if (!not_empty_.wait_for(lock, chrono::milliseconds(timeout_ms),
                              [this] { return !queue_.empty() || shutdown_; })) {
-      return std::nullopt;
+      return nullopt;
     }
     if (queue_.empty())
-      return std::nullopt;
-    T item = std::move(queue_.front());
+      return nullopt;
+    T item = move(queue_.front());
     queue_.pop();
     not_full_.notify_one();
     return item;
   }
 
   void shutdown() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    lock_guard<mutex> lock(mutex_);
     shutdown_ = true;
     not_empty_.notify_all();
     not_full_.notify_all();
   }
 
   size_t size() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    lock_guard<mutex> lock(mutex_);
     return queue_.size();
   }
 
   bool is_shutdown() const { return shutdown_; }
 
 private:
-  std::queue<T> queue_;
-  mutable std::mutex mutex_;
-  std::condition_variable not_empty_;
-  std::condition_variable not_full_;
+  queue<T> queue_;
+  mutable mutex mutex_;
+  condition_variable not_empty_;
+  condition_variable not_full_;
   size_t max_size_;
-  std::atomic<bool> shutdown_;
+  atomic<bool> shutdown_;
 };
 
 struct Packet {
@@ -81,7 +83,7 @@ struct Packet {
   uint32_t ts_sec;
   uint32_t ts_usec;
   FiveTuple tuple;
-  std::vector<uint8_t> data;
+  vector<uint8_t> data;
   uint8_t tcp_flags;
   size_t payload_offset;
   size_t payload_length;
@@ -90,7 +92,7 @@ struct Packet {
 struct FlowEntry {
   FiveTuple tuple;
   AppType app_type = AppType::UNKNOWN;
-  std::string sni;
+  string sni;
   uint64_t packets = 0;
   uint64_t bytes = 0;
   bool blocked = false;
@@ -99,65 +101,65 @@ struct FlowEntry {
 
 class Rules {
 public:
-  void blockIP(const std::string &ip) {
-    std::lock_guard<std::mutex> lock(mutex_);
+  void blockIP(const string &ip) {
+    lock_guard<mutex> lock(mutex_);
     blocked_ips_.insert(DPI::Utils::parseIP(ip));
-    std::cout << "[Rules] Blocked IP: " << ip << "\n";
+    cout << "[Rules] Blocked IP: " << ip << "\n";
   }
 
-  void blockApp(const std::string &app) {
-    std::lock_guard<std::mutex> lock(mutex_);
+  void blockApp(const string &app) {
+    lock_guard<mutex> lock(mutex_);
     for (int i = 0; i < static_cast<int>(AppType::APP_COUNT); i++) {
       if (appTypeToString(static_cast<AppType>(i)) == app) {
         blocked_apps_.insert(static_cast<AppType>(i));
-        std::cout << "[Rules] Blocked app: " << app << "\n";
+        cout << "[Rules] Blocked app: " << app << "\n";
         return;
       }
     }
-    std::cerr << "[Rules] Unknown app: " << app << "\n";
+    cerr << "[Rules] Unknown app: " << app << "\n";
   }
 
-  void blockDomain(const std::string &domain) {
-    std::lock_guard<std::mutex> lock(mutex_);
+  void blockDomain(const string &domain) {
+    lock_guard<mutex> lock(mutex_);
     blocked_domains_.push_back(domain);
-    std::cout << "[Rules] Blocked domain: " << domain << "\n";
+    cout << "[Rules] Blocked domain: " << domain << "\n";
   }
 
-  bool isBlocked(uint32_t src_ip, AppType app, const std::string &sni) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+  bool isBlocked(uint32_t src_ip, AppType app, const string &sni) const {
+    lock_guard<mutex> lock(mutex_);
     if (blocked_ips_.count(src_ip))
       return true;
     if (blocked_apps_.count(app))
       return true;
     for (const auto &dom : blocked_domains_) {
-      if (sni.find(dom) != std::string::npos)
+      if (sni.find(dom) != string::npos)
         return true;
     }
     return false;
   }
 
 private:
-  mutable std::mutex mutex_;
-  std::unordered_set<uint32_t> blocked_ips_;
-  std::unordered_set<AppType> blocked_apps_;
-  std::vector<std::string> blocked_domains_;
+  mutable mutex mutex_;
+  unordered_set<uint32_t> blocked_ips_;
+  unordered_set<AppType> blocked_apps_;
+  vector<string> blocked_domains_;
 };
 
 struct Stats {
-  std::atomic<uint64_t> total_packets{0};
-  std::atomic<uint64_t> total_bytes{0};
-  std::atomic<uint64_t> forwarded{0};
-  std::atomic<uint64_t> dropped{0};
-  std::atomic<uint64_t> tcp_packets{0};
-  std::atomic<uint64_t> udp_packets{0};
+  atomic<uint64_t> total_packets{0};
+  atomic<uint64_t> total_bytes{0};
+  atomic<uint64_t> forwarded{0};
+  atomic<uint64_t> dropped{0};
+  atomic<uint64_t> tcp_packets{0};
+  atomic<uint64_t> udp_packets{0};
 
   // Per-app stats (protected by mutex)
-  std::mutex app_mutex;
-  std::unordered_map<AppType, uint64_t> app_counts;
-  std::unordered_map<std::string, AppType> detected_snis;
+  mutex app_mutex;
+  unordered_map<AppType, uint64_t> app_counts;
+  unordered_map<string, AppType> detected_snis;
 
-  void recordApp(AppType app, const std::string &sni) {
-    std::lock_guard<std::mutex> lock(app_mutex);
+  void recordApp(AppType app, const string &sni) {
+    lock_guard<mutex> lock(app_mutex);
     app_counts[app]++;
     if (!sni.empty()) {
       detected_snis[sni] = app;
@@ -172,7 +174,7 @@ public:
 
   void start() {
     running_ = true;
-    thread_ = std::thread(&FastPath::run, this);
+    thread_ = thread(&FastPath::run, this);
   }
 
   void stop() {
@@ -192,11 +194,11 @@ private:
   Stats *stats_;
   TSQueue<Packet> *output_queue_;
   TSQueue<Packet> input_queue_;
-  std::unordered_map<FiveTuple, FlowEntry, FiveTupleHash> flows_;
+  unordered_map<FiveTuple, FlowEntry, FiveTupleHash> flows_;
 
-  std::atomic<bool> running_{false};
-  std::thread thread_;
-  std::atomic<uint64_t> processed_{0};
+  atomic<bool> running_{false};
+  thread thread_;
+  atomic<uint64_t> processed_{0};
 
   void run() {
     while (running_) {
@@ -229,7 +231,7 @@ private:
         stats_->dropped++;
       } else {
         stats_->forwarded++;
-        output_queue_->push(std::move(pkt));
+        output_queue_->push(move(pkt));
       }
     }
   }
@@ -277,12 +279,12 @@ private:
 
 class LoadBalancer {
 public:
-  LoadBalancer(int id, std::vector<FastPath *> fps)
-      : id_(id), fps_(std::move(fps)), num_fps_(fps_.size()) {}
+  LoadBalancer(int id, vector<FastPath *> fps)
+      : id_(id), fps_(move(fps)), num_fps_(fps_.size()) {}
 
   void start() {
     running_ = true;
-    thread_ = std::thread(&LoadBalancer::run, this);
+    thread_ = thread(&LoadBalancer::run, this);
   }
 
   void stop() {
@@ -298,13 +300,13 @@ public:
 
 private:
   int id_;
-  std::vector<FastPath *> fps_;
+  vector<FastPath *> fps_;
   size_t num_fps_;
   TSQueue<Packet> input_queue_;
 
-  std::atomic<bool> running_{false};
-  std::thread thread_;
-  std::atomic<uint64_t> dispatched_{0};
+  atomic<bool> running_{false};
+  thread thread_;
+  atomic<uint64_t> dispatched_{0};
 
   void run() {
     while (running_) {
@@ -315,7 +317,7 @@ private:
       FiveTupleHash hasher;
       size_t fp_idx = hasher(pkt_opt->tuple) % num_fps_;
 
-      fps_[fp_idx]->queue().push(std::move(*pkt_opt));
+      fps_[fp_idx]->queue().push(move(*pkt_opt));
       dispatched_++;
     }
   }
@@ -331,46 +333,46 @@ public:
   DPIEngine(const Config &cfg) : config_(cfg) {
     int total_fps = cfg.num_lbs * cfg.fps_per_lb;
 
-    std::cout << "\n";
-    std::cout
+    cout << "\n";
+    cout
         << "╔══════════════════════════════════════════════════════════════╗\n";
-    std::cout << "║              DPI ENGINE v2.0 (Multi-threaded)              "
+    cout << "║              DPI ENGINE v2.0 (Multi-threaded)              "
                  "   ║\n";
-    std::cout
+    cout
         << "╠══════════════════════════════════════════════════════════════╣\n";
-    std::cout << "║ Load Balancers: " << std::setw(2) << cfg.num_lbs
-              << "    FPs per LB: " << std::setw(2) << cfg.fps_per_lb
-              << "    Total FPs: " << std::setw(2) << total_fps << "     ║\n";
-    std::cout << "╚════════════════════════════════════════════════════════════"
+    cout << "║ Load Balancers: " << setw(2) << cfg.num_lbs
+              << "    FPs per LB: " << setw(2) << cfg.fps_per_lb
+              << "    Total FPs: " << setw(2) << total_fps << "     ║\n";
+    cout << "╚════════════════════════════════════════════════════════════"
                  "══╝\n\n";
 
     for (int i = 0; i < total_fps; i++) {
       fps_.push_back(
-          std::make_unique<FastPath>(i, &rules_, &stats_, &output_queue_));
+          make_unique<FastPath>(i, &rules_, &stats_, &output_queue_));
     }
 
     for (int lb = 0; lb < cfg.num_lbs; lb++) {
-      std::vector<FastPath *> lb_fps;
+      vector<FastPath *> lb_fps;
       int start = lb * cfg.fps_per_lb;
       for (int i = 0; i < cfg.fps_per_lb; i++) {
         lb_fps.push_back(fps_[start + i].get());
       }
-      lbs_.push_back(std::make_unique<LoadBalancer>(lb, std::move(lb_fps)));
+      lbs_.push_back(make_unique<LoadBalancer>(lb, move(lb_fps)));
     }
   }
 
-  void blockIP(const std::string &ip) { rules_.blockIP(ip); }
-  void blockApp(const std::string &app) { rules_.blockApp(app); }
-  void blockDomain(const std::string &dom) { rules_.blockDomain(dom); }
+  void blockIP(const string &ip) { rules_.blockIP(ip); }
+  void blockApp(const string &app) { rules_.blockApp(app); }
+  void blockDomain(const string &dom) { rules_.blockDomain(dom); }
 
-  bool process(const std::string &input_file, const std::string &output_file) {
+  bool process(const string &input_file, const string &output_file) {
     PcapReader reader;
     if (!reader.open(input_file))
       return false;
 
-    std::ofstream output(output_file, std::ios::binary);
+    ofstream output(output_file, ios::binary);
     if (!output.is_open()) {
-      std::cerr << "Cannot open output file\n";
+      cerr << "Cannot open output file\n";
       return false;
     }
 
@@ -382,8 +384,8 @@ public:
     for (auto &lb : lbs_)
       lb->start();
 
-    std::atomic<bool> output_running{true};
-    std::thread output_thread([&]() {
+    atomic<bool> output_running{true};
+    thread output_thread([&]() {
       while (output_running || output_queue_.size() > 0) {
         auto pkt_opt = output_queue_.pop(50);
         if (!pkt_opt)
@@ -401,7 +403,7 @@ public:
       }
     });
 
-    std::cout << "[Reader] Processing packets...\n";
+    cout << "[Reader] Processing packets...\n";
     RawPacket raw;
     ParsedPacket parsed;
     uint32_t pkt_id = 0;
@@ -417,7 +419,7 @@ public:
       pkt.ts_sec = raw.header.ts_sec;
       pkt.ts_usec = raw.header.ts_usec;
       pkt.tcp_flags = parsed.tcp_flags;
-      pkt.data = std::move(raw.data);
+      pkt.data = move(raw.data);
 
       pkt.tuple.src_ip = DPI::Utils::parseIP(parsed.src_ip);
       pkt.tuple.dst_ip = DPI::Utils::parseIP(parsed.dest_ip);
@@ -453,13 +455,13 @@ public:
 
       FiveTupleHash hasher;
       size_t lb_idx = hasher(pkt.tuple) % lbs_.size();
-      lbs_[lb_idx]->queue().push(std::move(pkt));
+      lbs_[lb_idx]->queue().push(move(pkt));
     }
 
-    std::cout << "[Reader] Done reading " << pkt_id << " packets\n";
+    cout << "[Reader] Done reading " << pkt_id << " packets\n";
     reader.close();
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    this_thread::sleep_for(chrono::milliseconds(500));
 
     for (auto &lb : lbs_)
       lb->stop();
@@ -482,86 +484,86 @@ private:
   Rules rules_;
   Stats stats_;
   TSQueue<Packet> output_queue_;
-  std::vector<std::unique_ptr<FastPath>> fps_;
-  std::vector<std::unique_ptr<LoadBalancer>> lbs_;
+  vector<unique_ptr<FastPath>> fps_;
+  vector<unique_ptr<LoadBalancer>> lbs_;
 
   void printReport() {
-    std::cout << "\n";
-    std::cout
+    cout << "\n";
+    cout
         << "╔══════════════════════════════════════════════════════════════╗\n";
-    std::cout << "║                      PROCESSING REPORT                     "
+    cout << "║                      PROCESSING REPORT                     "
                  "   ║\n";
-    std::cout
+    cout
         << "╠══════════════════════════════════════════════════════════════╣\n";
-    std::cout << "║ Total Packets:      " << std::setw(12)
+    cout << "║ Total Packets:      " << setw(12)
               << stats_.total_packets.load()
               << "                           ║\n";
-    std::cout << "║ Total Bytes:        " << std::setw(12)
+    cout << "║ Total Bytes:        " << setw(12)
               << stats_.total_bytes.load() << "                           ║\n";
-    std::cout << "║ TCP Packets:        " << std::setw(12)
+    cout << "║ TCP Packets:        " << setw(12)
               << stats_.tcp_packets.load() << "                           ║\n";
-    std::cout << "║ UDP Packets:        " << std::setw(12)
+    cout << "║ UDP Packets:        " << setw(12)
               << stats_.udp_packets.load() << "                           ║\n";
-    std::cout
+    cout
         << "╠══════════════════════════════════════════════════════════════╣\n";
-    std::cout << "║ Forwarded:          " << std::setw(12)
+    cout << "║ Forwarded:          " << setw(12)
               << stats_.forwarded.load() << "                           ║\n";
-    std::cout << "║ Dropped:            " << std::setw(12)
+    cout << "║ Dropped:            " << setw(12)
               << stats_.dropped.load() << "                           ║\n";
 
-    std::cout
+    cout
         << "╠══════════════════════════════════════════════════════════════╣\n";
-    std::cout << "║ THREAD STATISTICS                                          "
+    cout << "║ THREAD STATISTICS                                          "
                  "   ║\n";
     for (size_t i = 0; i < lbs_.size(); i++) {
-      std::cout << "║   LB" << i << " dispatched:   " << std::setw(12)
+      cout << "║   LB" << i << " dispatched:   " << setw(12)
                 << lbs_[i]->dispatched() << "                           ║\n";
     }
     for (size_t i = 0; i < fps_.size(); i++) {
-      std::cout << "║   FP" << i << " processed:    " << std::setw(12)
+      cout << "║   FP" << i << " processed:    " << setw(12)
                 << fps_[i]->processed() << "                           ║\n";
     }
 
-    std::cout
+    cout
         << "╠══════════════════════════════════════════════════════════════╣\n";
-    std::cout << "║                   APPLICATION BREAKDOWN                    "
+    cout << "║                   APPLICATION BREAKDOWN                    "
                  "   ║\n";
-    std::cout
+    cout
         << "╠══════════════════════════════════════════════════════════════╣\n";
 
-    std::lock_guard<std::mutex> lock(stats_.app_mutex);
+    lock_guard<mutex> lock(stats_.app_mutex);
 
-    std::vector<std::pair<AppType, uint64_t>> sorted_apps(
+    vector<pair<AppType, uint64_t>> sorted_apps(
         stats_.app_counts.begin(), stats_.app_counts.end());
-    std::sort(sorted_apps.begin(), sorted_apps.end(),
+    sort(sorted_apps.begin(), sorted_apps.end(),
               [](const auto &a, const auto &b) { return a.second > b.second; });
 
     uint64_t total = stats_.total_packets.load();
     for (const auto &[app, count] : sorted_apps) {
       double pct = total > 0 ? (100.0 * count / total) : 0;
       int bar = static_cast<int>(pct / 5);
-      std::string bar_str(bar, '#');
+      string bar_str(bar, '#');
 
-      std::cout << "║ " << std::setw(15) << std::left << appTypeToString(app)
-                << std::setw(8) << std::right << count << " " << std::setw(5)
-                << std::fixed << std::setprecision(1) << pct << "% "
-                << std::setw(20) << std::left << bar_str << "  ║\n";
+      cout << "║ " << setw(15) << left << appTypeToString(app)
+                << setw(8) << right << count << " " << setw(5)
+                << fixed << setprecision(1) << pct << "% "
+                << setw(20) << left << bar_str << "  ║\n";
     }
 
-    std::cout
+    cout
         << "╚══════════════════════════════════════════════════════════════╝\n";
 
     if (!stats_.detected_snis.empty()) {
-      std::cout << "\n[Detected Domains/SNIs]\n";
+      cout << "\n[Detected Domains/SNIs]\n";
       for (const auto &[sni, app] : stats_.detected_snis) {
-        std::cout << "  - " << sni << " -> " << appTypeToString(app) << "\n";
+        cout << "  - " << sni << " -> " << appTypeToString(app) << "\n";
       }
     }
   }
 };
 
 void printUsage(const char *prog) {
-  std::cout
+  cout
       << R"(
 DPI Engine v2.0 - Multi-threaded Deep Packet Inspection
 ========================================================
@@ -588,14 +590,14 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  std::string input = argv[1];
-  std::string output = argv[2];
+  string input = argv[1];
+  string output = argv[2];
 
   DPIEngine::Config cfg;
-  std::vector<std::string> block_ips, block_apps, block_domains;
+  vector<string> block_ips, block_apps, block_domains;
 
   for (int i = 3; i < argc; i++) {
-    std::string arg = argv[i];
+    string arg = argv[i];
     if (arg == "--block-ip" && i + 1 < argc)
       block_ips.push_back(argv[++i]);
     else if (arg == "--block-app" && i + 1 < argc)
@@ -603,9 +605,9 @@ int main(int argc, char *argv[]) {
     else if (arg == "--block-domain" && i + 1 < argc)
       block_domains.push_back(argv[++i]);
     else if (arg == "--lbs" && i + 1 < argc)
-      cfg.num_lbs = std::stoi(argv[++i]);
+      cfg.num_lbs = stoi(argv[++i]);
     else if (arg == "--fps" && i + 1 < argc)
-      cfg.fps_per_lb = std::stoi(argv[++i]);
+      cfg.fps_per_lb = stoi(argv[++i]);
   }
 
   DPIEngine engine(cfg);
@@ -621,6 +623,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  std::cout << "\nOutput written to: " << output << "\n";
+  cout << "\nOutput written to: " << output << "\n";
   return 0;
 }
