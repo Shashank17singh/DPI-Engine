@@ -11,83 +11,83 @@ using namespace std;
 namespace PacketAnalyzer {
 
 struct EthernetHeader {
-  array<uint8_t, 6> dest_mac; // Destination MAC address
-  array<uint8_t, 6> src_mac;  // Source MAC address
-  uint16_t ether_type;             // Type of payload (0x0800 = IPv4)
+  array<uint8_t, 6> dest_mac; 
+  array<uint8_t, 6> src_mac;  
+  uint16_t ether_type;             
 };
 
 struct IPv4Header {
-  uint8_t version_ihl;     // Version (4 bits) + Header Length (4 bits)
-  uint8_t tos;             // Type of Service
-  uint16_t total_length;   // Total packet length
-  uint16_t identification; // Fragment identification
-  uint16_t flags_fragment; // Flags (3 bits) + Fragment Offset (13 bits)
-  uint8_t ttl;             // Time To Live
-  uint8_t protocol;        // Protocol (6=TCP, 17=UDP, 1=ICMP)
-  uint16_t checksum;       // Header checksum
-  uint32_t src_ip;         // Source IP address
-  uint32_t dest_ip;        // Destination IP address
-                           // Options may follow if header length > 5
+  uint8_t version_ihl;     
+  uint8_t tos;             
+  uint16_t total_length;   
+  uint16_t identification; 
+  uint16_t flags_fragment; 
+  uint8_t ttl;             
+  uint8_t protocol;        
+  uint16_t checksum;       
+  uint32_t src_ip;         
+  uint32_t dest_ip;        
+                           
 };
 
 struct TCPHeader {
-  uint16_t src_port;       // Source port
-  uint16_t dest_port;      // Destination port
-  uint32_t seq_number;     // Sequence number
-  uint32_t ack_number;     // Acknowledgment number
-  uint8_t data_offset;     // Data offset (4 bits) + Reserved (4 bits)
-  uint8_t flags;           // TCP flags (SYN, ACK, FIN, etc.)
-  uint16_t window;         // Window size
-  uint16_t checksum;       // Checksum
-  uint16_t urgent_pointer; // Urgent pointer
+  uint16_t src_port;       
+  uint16_t dest_port;      
+  uint32_t seq_number;     
+  uint32_t ack_number;     
+  uint8_t data_offset;     
+  uint8_t flags;           
+  uint16_t window;         
+  uint16_t checksum;       
+  uint16_t urgent_pointer; 
 };
 
 struct UDPHeader {
-  uint16_t src_port;  // Source port
-  uint16_t dest_port; // Destination port
-  uint16_t length;    // Length of UDP header + data
-  uint16_t checksum;  // Checksum
+  uint16_t src_port;  
+  uint16_t dest_port; 
+  uint16_t length;    
+  uint16_t checksum;  
 };
 
 struct ParsedPacket {
-  // Timestamps
+  
   uint32_t timestamp_sec;
   uint32_t timestamp_usec;
 
-  // Ethernet layer
+  
   string src_mac;
   string dest_mac;
   uint16_t ether_type;
 
-  // IP layer (if present)
+  
   bool has_ip = false;
   uint8_t ip_version;
   string src_ip;
   string dest_ip;
-  uint8_t protocol; // TCP=6, UDP=17, ICMP=1
+  uint8_t protocol; 
   uint8_t ttl;
 
-  // Transport layer (if present)
+  
   bool has_tcp = false;
   bool has_udp = false;
   uint16_t src_port;
   uint16_t dest_port;
 
-  // TCP-specific
+  
   uint8_t tcp_flags;
   uint32_t seq_number;
   uint32_t ack_number;
 
-  // Payload
+  
   size_t payload_length;
-  const uint8_t *payload_data = nullptr; // Points into original packet
+  const uint8_t *payload_data = nullptr; 
 };
 
 class PacketParser {
 public:
   static bool parse(const RawPacket &raw, ParsedPacket &parsed);
 
-  // Helper functions to convert to human-readable strings
+  
   static string macToString(const uint8_t *mac);
   static string ipToString(uint32_t ip);
   static string protocolToString(uint8_t protocol);
@@ -104,7 +104,7 @@ private:
                        size_t &offset);
 };
 
-// TCP Flag constants
+
 namespace TCPFlags {
 constexpr uint8_t FIN = 0x01;
 constexpr uint8_t SYN = 0x02;
@@ -112,22 +112,22 @@ constexpr uint8_t RST = 0x04;
 constexpr uint8_t PSH = 0x08;
 constexpr uint8_t ACK = 0x10;
 constexpr uint8_t URG = 0x20;
-} // namespace TCPFlags
+} 
 
-// Protocol numbers
+
 namespace Protocol {
 constexpr uint8_t ICMP = 1;
 constexpr uint8_t TCP = 6;
 constexpr uint8_t UDP = 17;
-} // namespace Protocol
+} 
 
-// EtherType values
+
 namespace EtherType {
 constexpr uint16_t IPv4 = 0x0800;
 constexpr uint16_t IPv6 = 0x86DD;
 constexpr uint16_t ARP = 0x0806;
-} // namespace EtherType
+} 
 
-} // namespace PacketAnalyzer
+} 
 
-#endif // PACKET_PARSER_H
+#endif 

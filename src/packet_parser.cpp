@@ -1,3 +1,9 @@
+/*
+ * packet_parser.cpp
+ *
+ * Implements wire-speed packet decoding for Ethernet, IPv4, TCP, and UDP headers.
+ * Extracts critical L2-L4 metadata required for 5-tuple flow hashing and payload offset calculation.
+ */
 #include "packet_parser.h"
 #include "platform.h"
 #include <cstring>
@@ -6,11 +12,11 @@
 
 using namespace std;
 
-// Use portable byte order functions
+
 using PortableNet::netToHost16;
 using PortableNet::netToHost32;
 
-// Wrapper macros for compatibility
+
 #define ntohs(x) netToHost16(x)
 #define ntohl(x) netToHost32(x)
 
@@ -58,11 +64,11 @@ bool PacketParser::parse(const RawPacket &raw, ParsedPacket &parsed) {
 
 bool PacketParser::parseEthernet(const uint8_t *data, size_t len,
                                  ParsedPacket &parsed, size_t &offset) {
-  // Ethernet header is 14 bytes
+  
   constexpr size_t ETH_HEADER_LEN = 14;
 
   if (len < ETH_HEADER_LEN) {
-    return false; // Packet too short
+    return false; 
   }
 
   parsed.dest_mac = macToString(data);
@@ -77,25 +83,25 @@ bool PacketParser::parseEthernet(const uint8_t *data, size_t len,
 
 bool PacketParser::parseIPv4(const uint8_t *data, size_t len,
                              ParsedPacket &parsed, size_t &offset) {
-  // Minimum IPv4 header is 20 bytes
+  
   constexpr size_t MIN_IP_HEADER_LEN = 20;
 
   if (len < offset + MIN_IP_HEADER_LEN) {
-    return false; // Packet too short
+    return false; 
   }
 
   const uint8_t *ip_data = data + offset;
 
-  // First byte: version (4 bits) + IHL (4 bits)
+  
   uint8_t version_ihl = ip_data[0];
   parsed.ip_version = (version_ihl >> 4) & 0x0F;
-  uint8_t ihl = version_ihl & 0x0F; // Header length in 32-bit words
+  uint8_t ihl = version_ihl & 0x0F; 
 
   if (parsed.ip_version != 4) {
-    return false; // Not IPv4
+    return false; 
   }
 
-  size_t ip_header_len = ihl * 4; // Convert to bytes
+  size_t ip_header_len = ihl * 4; 
   if (ip_header_len < MIN_IP_HEADER_LEN || len < offset + ip_header_len) {
     return false;
   }
@@ -119,7 +125,7 @@ bool PacketParser::parseIPv4(const uint8_t *data, size_t len,
 
 bool PacketParser::parseTCP(const uint8_t *data, size_t len,
                             ParsedPacket &parsed, size_t &offset) {
-  // Minimum TCP header is 20 bytes
+  
   constexpr size_t MIN_TCP_HEADER_LEN = 20;
 
   if (len < offset + MIN_TCP_HEADER_LEN) {
@@ -136,7 +142,7 @@ bool PacketParser::parseTCP(const uint8_t *data, size_t len,
 
   parsed.ack_number = ntohl(*reinterpret_cast<const uint32_t *>(tcp_data + 8));
 
-  // Data offset (upper 4 bits of byte 12) - header length in 32-bit words
+  
   uint8_t data_offset = (tcp_data[12] >> 4) & 0x0F;
   size_t tcp_header_len = data_offset * 4;
 
@@ -154,7 +160,7 @@ bool PacketParser::parseTCP(const uint8_t *data, size_t len,
 
 bool PacketParser::parseUDP(const uint8_t *data, size_t len,
                             ParsedPacket &parsed, size_t &offset) {
-  // UDP header is always 8 bytes
+  
   constexpr size_t UDP_HEADER_LEN = 8;
 
   if (len < offset + UDP_HEADER_LEN) {
@@ -185,8 +191,8 @@ string PacketParser::macToString(const uint8_t *mac) {
 }
 
 string PacketParser::ipToString(uint32_t ip) {
-  // IP is stored in network byte order (big-endian)
-  // We need to extract each byte
+  
+  
   ostringstream ss;
   ss << ((ip >> 0) & 0xFF) << "." << ((ip >> 8) & 0xFF) << "."
      << ((ip >> 16) & 0xFF) << "." << ((ip >> 24) & 0xFF);
@@ -221,8 +227,8 @@ string PacketParser::tcpFlagsToString(uint8_t flags) {
   if (flags & TCPFlags::URG)
     result += "URG ";
   if (!result.empty())
-    result.pop_back(); // Remove trailing space
+    result.pop_back(); 
   return result.empty() ? "none" : result;
 }
 
-} // namespace PacketAnalyzer
+} 

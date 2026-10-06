@@ -1,3 +1,9 @@
+/*
+ * types.cpp
+ *
+ * Core data structures and enum mappers for the DPI Engine.
+ * Contains the dictionary mapping of extracted SNI/Domain strings to categorized AppTypes.
+ */
 #include "types.h"
 #include <algorithm>
 #include <cctype>
@@ -31,7 +37,7 @@ string formatIP(uint32_t ip) {
   return s.str();
 }
 
-} // namespace Utils
+} 
 
 string FiveTuple::toString() const {
   ostringstream ss;
@@ -95,10 +101,10 @@ string appTypeToString(AppType type) {
   }
 }
 
-// True only if `host` IS `suffix`, or ends with `suffix` on a label
-// boundary (preceded by '.'). Plain substring search is unsafe for short
-// domain suffixes like "x.com" or "t.co" -- e.g. "netflix.com" contains
-// "x.com" as a raw substring even though it has nothing to do with x.com.
+
+
+
+
 static bool hasDomainSuffix(const string &host,
                             const string &suffix) {
   if (host.size() < suffix.size())
@@ -109,7 +115,7 @@ static bool hasDomainSuffix(const string &host,
   return start == 0 || host[start - 1] == '.';
 }
 
-// Map SNI/domain to application type
+
 AppType sniToAppType(const string &sni) {
   if (sni.empty())
     return AppType::UNKNOWN;
@@ -227,4 +233,4 @@ AppType sniToAppType(const string &sni) {
   return AppType::HTTPS;
 }
 
-} // namespace DPI
+} 

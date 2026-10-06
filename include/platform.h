@@ -36,13 +36,13 @@ inline uint32_t netToHost32(uint32_t netValue) {
 }
 
 inline uint16_t hostToNet16(uint16_t hostValue) {
-  return netToHost16(hostValue); // Same operation
+  return netToHost16(hostValue); 
 }
 
 inline uint32_t hostToNet32(uint32_t hostValue) {
-  return netToHost32(hostValue); // Same operation
+  return netToHost32(hostValue); 
 }
 
-} // namespace PortableNet
+} 
 
-#endif // PLATFORM_H
+#endif 

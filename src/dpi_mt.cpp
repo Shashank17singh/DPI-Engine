@@ -1,5 +1,5 @@
-// Multi-threaded DPI Engine - Fixed Version
-// Architecture: Reader -> LB threads -> FP threads -> Output
+
+
 
 #include <algorithm>
 #include <atomic>
@@ -124,8 +124,8 @@ public:
     cout << "[Rules] Blocked domain: " << domain << "\n";
   }
 
+  // Rules are populated before processing starts, so read access is thread-safe
   bool isBlocked(uint32_t src_ip, AppType app, const string &sni) const {
-    lock_guard<mutex> lock(mutex_);
     if (blocked_ips_.count(src_ip))
       return true;
     if (blocked_apps_.count(app))
@@ -152,16 +152,19 @@ struct Stats {
   atomic<uint64_t> tcp_packets{0};
   atomic<uint64_t> udp_packets{0};
 
-  // Per-app stats (protected by mutex)
   mutex app_mutex;
   unordered_map<AppType, uint64_t> app_counts;
   unordered_map<string, AppType> detected_snis;
 
-  void recordApp(AppType app, const string &sni) {
+  // Merge local thread stats into global stats
+  void mergeLocal(const unordered_map<AppType, uint64_t>& local_app_counts, 
+                  const unordered_map<string, AppType>& local_snis) {
     lock_guard<mutex> lock(app_mutex);
-    app_counts[app]++;
-    if (!sni.empty()) {
-      detected_snis[sni] = app;
+    for (const auto& kv : local_app_counts) {
+      app_counts[kv.first] += kv.second;
+    }
+    for (const auto& kv : local_snis) {
+      detected_snis[kv.first] = kv.second;
     }
   }
 };
@@ -194,6 +197,10 @@ private:
   TSQueue<Packet> *output_queue_;
   TSQueue<Packet> input_queue_;
   unordered_map<FiveTuple, FlowEntry, FiveTupleHash> flows_;
+  
+  // Local stats to avoid global lock contention
+  unordered_map<AppType, uint64_t> local_app_counts_;
+  unordered_map<string, AppType> local_snis_;
 
   atomic<bool> running_{false};
   thread thread_;
@@ -224,7 +231,11 @@ private:
             rules_->isBlocked(pkt.tuple.src_ip, flow.app_type, flow.sni);
       }
 
-      stats_->recordApp(flow.app_type, flow.sni);
+      // Record locally to avoid global mutex contention on every packet
+      local_app_counts_[flow.app_type]++;
+      if (!flow.sni.empty()) {
+        local_snis_[flow.sni] = flow.app_type;
+      }
 
       if (flow.blocked) {
         stats_->dropped++;
@@ -233,10 +244,13 @@ private:
         output_queue_->push(move(pkt));
       }
     }
+    
+    // Merge local stats back to global on exit
+    stats_->mergeLocal(local_app_counts_, local_snis_);
   }
 
   void classifyFlow(Packet &pkt, FlowEntry &flow) {
-    // Try SNI extraction for HTTPS
+    
     if (pkt.tuple.dst_port == 443 && pkt.payload_length > 5) {
       const uint8_t *payload = pkt.data.data() + pkt.payload_offset;
       string sni_val;
@@ -249,7 +263,7 @@ private:
       }
     }
 
-    // Try HTTP Host extraction
+    
     if (pkt.tuple.dst_port == 80 && pkt.payload_length > 10) {
       const uint8_t *payload = pkt.data.data() + pkt.payload_offset;
       string sni_val;
@@ -262,14 +276,14 @@ private:
       }
     }
 
-    // DNS
+    
     if (pkt.tuple.dst_port == 53 || pkt.tuple.src_port == 53) {
       flow.app_type = AppType::DNS;
       flow.classified = true;
       return;
     }
 
-    // Port-based fallback (but don't mark as classified - might get SNI later)
+    
     if (pkt.tuple.dst_port == 443) {
       flow.app_type = AppType::HTTPS;
     } else if (pkt.tuple.dst_port == 80) {
@@ -428,7 +442,7 @@ public:
       pkt.tuple.dst_port = parsed.dest_port;
       pkt.tuple.protocol = parsed.protocol;
 
-      pkt.payload_offset = 14; // Ethernet
+      pkt.payload_offset = 14; 
       if (pkt.data.size() > 14) {
         uint8_t ip_ihl = pkt.data[14] & 0x0F;
         pkt.payload_offset += ip_ihl * 4;

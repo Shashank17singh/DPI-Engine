@@ -19,13 +19,13 @@ public:
   extractExtensions(const uint8_t *payload, size_t length);
 
 private:
-  // TLS Constants
+  
   static constexpr uint8_t CONTENT_TYPE_HANDSHAKE = 0x16;
   static constexpr uint8_t HANDSHAKE_CLIENT_HELLO = 0x01;
   static constexpr uint16_t EXTENSION_SNI = 0x0000;
   static constexpr uint8_t SNI_TYPE_HOSTNAME = 0x00;
 
-  // Helper to read big-endian values
+  
   static uint16_t readUint16BE(const uint8_t *data);
   static uint32_t readUint24BE(const uint8_t *data);
 };
@@ -51,6 +51,6 @@ public:
   static bool isDNSQuery(const uint8_t *payload, size_t length);
 };
 
-} // namespace DPI
+} 
 
-#endif // SNI_EXTRACTOR_H
+#endif 
