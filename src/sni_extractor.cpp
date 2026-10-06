@@ -1,3 +1,9 @@
+/*
+ * sni_extractor.cpp
+ *
+ * Implements Deep Packet Inspection logic to extract cleartext metadata from L7 protocols.
+ * Supports TLS SNI extraction, HTTP Host header extraction, DNS query extraction, and QUIC SNI (Initial packets).
+ */
 #include "sni_extractor.h"
 #include <cstring>
 
@@ -16,7 +22,7 @@ uint32_t SNIExtractor::readUint24BE(const uint8_t *data) {
 }
 
 bool SNIExtractor::isTLSClientHello(const uint8_t *payload, size_t length) {
-  // Minimum TLS record: 5 bytes header + 4 bytes handshake header
+  
   if (length < 9)
     return false;
 
@@ -73,7 +79,7 @@ bool SNIExtractor::extract(const uint8_t *payload, size_t length, string &out_st
 
   size_t extensions_end = offset + extensions_length;
   if (extensions_end > length) {
-    extensions_end = length; // Truncated, but try to parse anyway
+    extensions_end = length; 
   }
 
   while (offset + 4 <= extensions_end) {
@@ -118,8 +124,8 @@ SNIExtractor::extractExtensions(const uint8_t *payload, size_t length) {
 
   vector<pair<uint16_t, string>> extensions;
 
-  // Similar parsing logic as extract(), but collect all extensions
-  // ... (abbreviated for brevity)
+  
+  
 
   return extensions;
 }
@@ -129,7 +135,7 @@ bool HTTPHostExtractor::isHTTPRequest(const uint8_t *payload, size_t length) {
   if (length < 4)
     return false;
 
-  // Check for common HTTP methods
+  
   const char *methods[] = {"GET ", "POST", "PUT ", "HEAD",
                            "DELE", "PATC", "OPTI"};
 
@@ -151,21 +157,21 @@ bool HTTPHostExtractor::extract(const uint8_t *payload, size_t length, string &o
   const size_t host_header_len = 6;
 
   for (size_t i = 0; i + host_header_len < length; i++) {
-    // Check for header (case-insensitive "host:")
+    
     if ((payload[i] == 'H' || payload[i] == 'h') &&
         (payload[i + 1] == 'o' || payload[i + 1] == 'O') &&
         (payload[i + 2] == 's' || payload[i + 2] == 'S') &&
         (payload[i + 3] == 't' || payload[i + 3] == 'T') &&
         payload[i + 4] == ':') {
 
-      // Skip "Host:" and any whitespace
+      
       size_t start = i + 5;
       while (start < length &&
              (payload[start] == ' ' || payload[start] == '\t')) {
         start++;
       }
 
-      // Find end of line
+      
       size_t end = start;
       while (end < length && payload[end] != '\r' && payload[end] != '\n') {
         end++;
@@ -175,7 +181,7 @@ bool HTTPHostExtractor::extract(const uint8_t *payload, size_t length, string &o
         string host(reinterpret_cast<const char *>(payload + start),
                          end - start);
 
-        // Remove port if present
+        
         size_t colon_pos = host.find(':');
         if (colon_pos != string::npos) {
           host = host.substr(0, colon_pos);
@@ -192,16 +198,16 @@ bool HTTPHostExtractor::extract(const uint8_t *payload, size_t length, string &o
 
 
 bool DNSExtractor::isDNSQuery(const uint8_t *payload, size_t length) {
-  // Minimum DNS header is 12 bytes
+  
   if (length < 12)
     return false;
 
-  // Check QR bit (byte 2, bit 7) - should be 0 for query
+  
   uint8_t flags = payload[2];
   if (flags & 0x80)
-    return false; // This is a response, not a query
+    return false; 
 
-  // Check QDCOUNT (bytes 4-5) - should be > 0
+  
   uint16_t qdcount = (static_cast<uint16_t>(payload[4]) << 8) | payload[5];
   if (qdcount == 0)
     return false;
@@ -254,9 +260,9 @@ bool QUICSNIExtractor::isQUICInitial(const uint8_t *payload, size_t length) {
   if ((first_byte & 0x80) == 0)
     return false;
 
-  // Check for QUIC version (bytes 1-4)
-  // Common versions: 0x00000001 (v1), 0xff000000+ (drafts)
-  // We'll be lenient here
+  
+  
+  
 
   return true;
 }
@@ -266,11 +272,11 @@ bool QUICSNIExtractor::extract(const uint8_t *payload, size_t length, string &ou
     return false;
   }
 
-  // Search for TLS Client Hello pattern within the QUIC packet
-  // Look for the handshake type byte followed by SNI extension
+  
+  
   for (size_t i = 0; i + 50 < length; i++) {
-    if (payload[i] == 0x01) { // Client Hello handshake type
-      // Try to extract SNI starting from here
+    if (payload[i] == 0x01) { 
+      
       string result;
       if (i >= 5 && SNIExtractor::extract(payload + i - 5, length - i + 5, result)) {
         out_str = result;
@@ -282,4 +288,4 @@ bool QUICSNIExtractor::extract(const uint8_t *payload, size_t length, string &ou
   return false;
 }
 
-} // namespace DPI
+} 

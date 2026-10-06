@@ -22,7 +22,7 @@ struct FiveTuple {
   uint32_t dst_ip;
   uint16_t src_port;
   uint16_t dst_port;
-  uint8_t protocol; // TCP=6, UDP=17
+  uint8_t protocol; 
 
   bool operator==(const FiveTuple &other) const {
     return src_ip == other.src_ip && dst_ip == other.dst_ip &&
@@ -30,7 +30,7 @@ struct FiveTuple {
            protocol == other.protocol;
   }
 
-  // Create reverse tuple (for matching bidirectional flows)
+  
   FiveTuple reverse() const {
     return {dst_ip, src_ip, dst_port, src_port, protocol};
   }
@@ -40,7 +40,7 @@ struct FiveTuple {
 
 struct FiveTupleHash {
   size_t operator()(const FiveTuple &tuple) const {
-    // Simple but effective hash combining all fields
+    
     size_t h = 0;
     h ^= hash<uint32_t>{}(tuple.src_ip) + 0x9e3779b9 + (h << 6) + (h >> 2);
     h ^= hash<uint32_t>{}(tuple.dst_ip) + 0x9e3779b9 + (h << 6) + (h >> 2);
@@ -61,7 +61,7 @@ enum class AppType {
   DNS,
   TLS,
   QUIC,
-  // Specific applications (detected via SNI)
+  
   GOOGLE,
   FACEBOOK,
   YOUTUBE,
@@ -79,8 +79,8 @@ enum class AppType {
   DISCORD,
   GITHUB,
   CLOUDFLARE,
-  // Add more as needed
-  APP_COUNT // Keep this last for counting
+  
+  APP_COUNT 
 };
 
 string appTypeToString(AppType type);
@@ -89,17 +89,17 @@ AppType sniToAppType(const string &sni);
 enum class ConnectionState { NEW, ESTABLISHED, CLASSIFIED, BLOCKED, CLOSED };
 
 enum class PacketAction {
-  FORWARD, // Send to internet
-  DROP,    // Block/drop the packet
-  INSPECT, // Needs further inspection
-  LOG_ONLY // Forward but log
+  FORWARD, 
+  DROP,    
+  INSPECT, 
+  LOG_ONLY 
 };
 
 struct Connection {
   FiveTuple tuple;
   ConnectionState state = ConnectionState::NEW;
   AppType app_type = AppType::UNKNOWN;
-  string sni; // Server Name Indication (if detected)
+  string sni; 
 
   uint64_t packets_in = 0;
   uint64_t packets_out = 0;
@@ -111,7 +111,7 @@ struct Connection {
 
   PacketAction action = PacketAction::FORWARD;
 
-  // For TCP state tracking
+  
   bool syn_seen = false;
   bool syn_ack_seen = false;
   bool fin_seen = false;
@@ -129,7 +129,7 @@ struct PacketJob {
   uint8_t tcp_flags = 0;
   const uint8_t *payload_data = nullptr;
 
-  // Timestamps
+  
   uint32_t ts_sec;
   uint32_t ts_usec;
 };
@@ -144,12 +144,12 @@ struct DPIStats {
   atomic<uint64_t> other_packets{0};
   atomic<uint64_t> active_connections{0};
 
-  // Non-copyable due to atomics
+  
   DPIStats() = default;
   DPIStats(const DPIStats &) = delete;
   DPIStats &operator=(const DPIStats &) = delete;
 };
 
-} // namespace DPI
+} 
 
-#endif // DPI_TYPES_H
+#endif 

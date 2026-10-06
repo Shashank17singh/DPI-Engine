@@ -1,4 +1,4 @@
-// Working DPI Engine - Simplified but functional
+
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
@@ -30,7 +30,7 @@ class BlockingRules {
 public:
   unordered_set<uint32_t> blocked_ips;
   unordered_set<AppType> blocked_apps;
-  vector<string> blocked_domains; // Simple substring match
+  vector<string> blocked_domains; 
 
   void blockIP(const string &ip) {
     uint32_t addr = DPI::Utils::parseIP(ip);
@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
     flow.packets++;
     flow.bytes += raw.data.size();
 
-    // Try SNI extraction - even for flows already marked as generic HTTPS
+    
     if ((flow.app_type == AppType::UNKNOWN ||
          flow.app_type == AppType::HTTPS) &&
         flow.sni.empty() && parsed.has_tcp && parsed.dest_port == 443) {
@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
 
         if (payload_offset < raw.data.size()) {
           size_t payload_len = raw.data.size() - payload_offset;
-          if (payload_len > 5) { // Minimum TLS record header
+          if (payload_len > 5) { 
             string sni_val;
             bool has_sni = SNIExtractor::extract(raw.data.data() + payload_offset, payload_len, sni_val);
             if (has_sni) {

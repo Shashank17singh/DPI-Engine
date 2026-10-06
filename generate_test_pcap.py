@@ -1,227 +1,316 @@
 """
-Generate a test PCAP file with various protocols for DPI testing.
-Includes TLS Client Hello with SNI, HTTP, DNS, etc.
+PCAP Generation Tool for DPI Engine Testing.
+Generates synthetic network traffic including TLS, HTTP, and DNS packets
+for deep packet inspection functional testing.
+Uses zero dependencies (struct packing) for portability.
 """
 
+import logging
 import random
 import struct
+from dataclasses import dataclass
+from typing import List, Tuple
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class NetworkEndpoint:
+    """Represents a network node with MAC and IP addresses."""
+    mac: str
+    ip: str
 
 
 class PCAPWriter:
-    def __init__(self, filename):
-        self.file = open(filename, "wb")
-        self.write_global_header()
-        self.timestamp = 1700000000
+    """Handles the writing of raw packets into a pcap format file."""
+    
+    MAGIC_NUMBER = 0xA1B2C3D4
+    VERSION_MAJOR = 2
+    VERSION_MINOR = 4
 
-    def write_global_header(self):
-        header = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
+    def __init__(self, filename: str):
+        self.filename = filename
+        self.file = open(filename, "wb")
+        self.timestamp = 1700000000
+        self._write_global_header()
+
+    def _write_global_header(self) -> None:
+        """Writes the pcap file global header."""
+        header = struct.pack(
+            "<IHHIIII",
+            self.MAGIC_NUMBER,
+            self.VERSION_MAJOR,
+            self.VERSION_MINOR,
+            0,
+            0,
+            65535,
+            1
+        )
         self.file.write(header)
 
-    def write_packet(self, data):
+    def write_packet(self, data: bytes) -> None:
+        """Writes an individual packet with a timestamp header."""
         ts_sec = self.timestamp
         ts_usec = random.randint(0, 999999)
         self.timestamp += 1
+        
         pkt_header = struct.pack("<IIII", ts_sec, ts_usec, len(data), len(data))
         self.file.write(pkt_header)
         self.file.write(data)
 
-    def close(self):
+    def close(self) -> None:
+        """Closes the underlying file descriptor."""
         self.file.close()
 
 
-def create_ethernet_header(src_mac, dst_mac, ethertype=0x0800):
-    return (
-        bytes.fromhex(dst_mac.replace(":", ""))
-        + bytes.fromhex(src_mac.replace(":", ""))
-        + struct.pack(">H", ethertype)
-    )
+class PacketBuilder:
+    """Static utility class for constructing network protocol headers."""
+
+    @staticmethod
+    def create_ethernet_header(src_mac: str, dst_mac: str, ethertype: int = 0x0800) -> bytes:
+        return (
+            bytes.fromhex(dst_mac.replace(":", ""))
+            + bytes.fromhex(src_mac.replace(":", ""))
+            + struct.pack(">H", ethertype)
+        )
+
+    @staticmethod
+    def create_ip_header(src_ip: str, dst_ip: str, protocol: int, payload_len: int) -> bytes:
+        version_ihl = 0x45
+        tos = 0
+        total_len = 20 + payload_len
+        ident = random.randint(1, 65535)
+        flags_frag = 0x4000
+        ttl = 64
+        checksum = 0
+        header = struct.pack(
+            ">BBHHHBBH",
+            version_ihl,
+            tos,
+            total_len,
+            ident,
+            flags_frag,
+            ttl,
+            protocol,
+            checksum,
+        )
+        header += bytes([int(x) for x in src_ip.split(".")])
+        header += bytes([int(x) for x in dst_ip.split(".")])
+        return header
+
+    @staticmethod
+    def create_tcp_header(src_port: int, dst_port: int, seq: int, ack: int, flags: int, payload_len: int = 0) -> bytes:
+        data_offset = 5 << 4
+        window = 65535
+        checksum = 0
+        urgent = 0
+        return struct.pack(
+            ">HHIIBBHHH",
+            src_port,
+            dst_port,
+            seq,
+            ack,
+            data_offset,
+            flags,
+            window,
+            checksum,
+            urgent,
+        )
+
+    @staticmethod
+    def create_udp_header(src_port: int, dst_port: int, payload_len: int) -> bytes:
+        length = 8 + payload_len
+        checksum = 0
+        return struct.pack(">HHHH", src_port, dst_port, length, checksum)
+
+    @staticmethod
+    def create_tls_client_hello(sni: str) -> bytes:
+        sni_bytes = sni.encode("ascii")
+        sni_entry = struct.pack(">BH", 0, len(sni_bytes)) + sni_bytes
+        sni_list = struct.pack(">H", len(sni_entry)) + sni_entry
+        sni_ext = struct.pack(">HH", 0x0000, len(sni_list)) + sni_list
+        
+        supported_versions = struct.pack(">HHB", 0x002B, 3, 2) + struct.pack(">H", 0x0304)
+        extensions = sni_ext + supported_versions
+        extensions_data = struct.pack(">H", len(extensions)) + extensions
+        
+        client_version = struct.pack(">H", 0x0303)
+        random_bytes = bytes([random.randint(0, 255) for _ in range(32)])
+        session_id = struct.pack("B", 0)
+        cipher_suites = struct.pack(">H", 4) + struct.pack(">HH", 0x1301, 0x1302)
+        compression = struct.pack("BB", 1, 0)
+        
+        client_hello_body = (
+            client_version
+            + random_bytes
+            + session_id
+            + cipher_suites
+            + compression
+            + extensions_data
+        )
+        
+        handshake = struct.pack("B", 0x01)
+        handshake += struct.pack(">I", len(client_hello_body))[1:]
+        handshake += client_hello_body
+        
+        record = struct.pack("B", 0x16)
+        record += struct.pack(">H", 0x0301)
+        record += struct.pack(">H", len(handshake))
+        record += handshake
+        
+        return record
+
+    @staticmethod
+    def create_http_request(host: str, path: str = "/") -> bytes:
+        return f"GET {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: DPI-Test/1.0\r\nAccept: */*\r\n\r\n".encode()
+
+    @staticmethod
+    def create_dns_query(domain: str) -> bytes:
+        txid = struct.pack(">H", random.randint(1, 65535))
+        flags = struct.pack(">H", 0x0100)
+        counts = struct.pack(">HHHH", 1, 0, 0, 0)
+        
+        question = b""
+        for label in domain.split("."):
+            question += struct.pack("B", len(label)) + label.encode()
+        question += struct.pack("B", 0)
+        question += struct.pack(">HH", 1, 1)
+        
+        return txid + flags + counts + question
 
 
-def create_ip_header(src_ip, dst_ip, protocol, payload_len):
-    version_ihl = 0x45
-    tos = 0
-    total_len = 20 + payload_len
-    ident = random.randint(1, 65535)
-    flags_frag = 0x4000
-    ttl = 64
-    checksum = 0
-    header = struct.pack(
-        ">BBHHHBBH",
-        version_ihl,
-        tos,
-        total_len,
-        ident,
-        flags_frag,
-        ttl,
-        protocol,
-        checksum,
-    )
-    header += bytes([int(x) for x in src_ip.split(".")])
-    header += bytes([int(x) for x in dst_ip.split(".")])
-    return header
+class TrafficGenerator:
+    """Orchestrates the generation of diverse network flows."""
+    
+    def __init__(self, output_file: str, client: NetworkEndpoint, gateway_mac: str):
+        self.writer = PCAPWriter(output_file)
+        self.client = client
+        self.gateway_mac = gateway_mac
+        self.seq_base = 1000
 
+    def get_next_port(self) -> int:
+        return random.randint(49152, 65535)
 
-def create_tcp_header(src_port, dst_port, seq, ack, flags, payload_len=0):
-    data_offset = 5 << 4
-    window = 65535
-    checksum = 0
-    urgent = 0
-    return struct.pack(
-        ">HHIIBBHHH",
-        src_port,
-        dst_port,
-        seq,
-        ack,
-        data_offset,
-        flags,
-        window,
-        checksum,
-        urgent,
-    )
+    def simulate_tls_flow(self, dst_ip: str, sni: str, dst_port: int = 443) -> None:
+        """Simulates a TCP handshake followed by a TLS Client Hello."""
+        src_port = self.get_next_port()
+        
+        # SYN
+        eth = PacketBuilder.create_ethernet_header(self.client.mac, self.gateway_mac)
+        tcp = PacketBuilder.create_tcp_header(src_port, dst_port, self.seq_base, 0, 0x02)
+        ip = PacketBuilder.create_ip_header(self.client.ip, dst_ip, 6, len(tcp))
+        self.writer.write_packet(eth + ip + tcp)
+        
+        # SYN-ACK
+        tcp = PacketBuilder.create_tcp_header(dst_port, src_port, self.seq_base + 1000, self.seq_base + 1, 0x12)
+        ip = PacketBuilder.create_ip_header(dst_ip, self.client.ip, 6, len(tcp))
+        eth = PacketBuilder.create_ethernet_header(self.gateway_mac, self.client.mac)
+        self.writer.write_packet(eth + ip + tcp)
+        
+        # ACK
+        eth = PacketBuilder.create_ethernet_header(self.client.mac, self.gateway_mac)
+        tcp = PacketBuilder.create_tcp_header(src_port, dst_port, self.seq_base + 1, self.seq_base + 1001, 0x10)
+        ip = PacketBuilder.create_ip_header(self.client.ip, dst_ip, 6, len(tcp))
+        self.writer.write_packet(eth + ip + tcp)
+        
+        # Client Hello
+        tls_data = PacketBuilder.create_tls_client_hello(sni)
+        tcp = PacketBuilder.create_tcp_header(src_port, dst_port, self.seq_base + 1, self.seq_base + 1001, 0x18)
+        ip = PacketBuilder.create_ip_header(self.client.ip, dst_ip, 6, len(tcp) + len(tls_data))
+        self.writer.write_packet(eth + ip + tcp + tls_data)
+        
+        self.seq_base += 10000
 
+    def simulate_http_flow(self, dst_ip: str, host: str, dst_port: int = 80) -> None:
+        """Simulates a TCP SYN followed by an HTTP GET request."""
+        src_port = self.get_next_port()
+        
+        eth = PacketBuilder.create_ethernet_header(self.client.mac, self.gateway_mac)
+        tcp = PacketBuilder.create_tcp_header(src_port, dst_port, self.seq_base, 0, 0x02)
+        ip = PacketBuilder.create_ip_header(self.client.ip, dst_ip, 6, len(tcp))
+        self.writer.write_packet(eth + ip + tcp)
+        
+        http_data = PacketBuilder.create_http_request(host)
+        tcp = PacketBuilder.create_tcp_header(src_port, dst_port, self.seq_base + 1, 1, 0x18)
+        ip = PacketBuilder.create_ip_header(self.client.ip, dst_ip, 6, len(tcp) + len(http_data))
+        self.writer.write_packet(eth + ip + tcp + http_data)
+        
+        self.seq_base += 10000
 
-def create_udp_header(src_port, dst_port, payload_len):
-    length = 8 + payload_len
-    checksum = 0
-    return struct.pack(">HHHH", src_port, dst_port, length, checksum)
+    def simulate_dns_query(self, domain: str, dns_server: str = "8.8.8.8") -> None:
+        """Simulates a UDP DNS query."""
+        src_port = self.get_next_port()
+        dns_data = PacketBuilder.create_dns_query(domain)
+        
+        eth = PacketBuilder.create_ethernet_header(self.client.mac, self.gateway_mac)
+        udp = PacketBuilder.create_udp_header(src_port, 53, len(dns_data))
+        ip = PacketBuilder.create_ip_header(self.client.ip, dns_server, 17, len(udp) + len(dns_data))
+        self.writer.write_packet(eth + ip + udp + dns_data)
 
+    def simulate_blocked_traffic(self, source_ip: str, packet_count: int = 5) -> None:
+        """Generates SYN packets from a specific blocked IP to trigger security rules."""
+        for _ in range(packet_count):
+            src_port = self.get_next_port()
+            dst_ip = "172.217.0.100"
+            eth = PacketBuilder.create_ethernet_header("00:11:22:33:44:56", self.gateway_mac)
+            tcp = PacketBuilder.create_tcp_header(src_port, 443, self.seq_base, 0, 0x02)
+            ip = PacketBuilder.create_ip_header(source_ip, dst_ip, 6, len(tcp))
+            
+            self.writer.write_packet(eth + ip + tcp)
+            self.seq_base += 1000
 
-def create_tls_client_hello(sni):
-    """Create a TLS Client Hello with SNI extension."""
-    sni_bytes = sni.encode("ascii")
-    sni_entry = struct.pack(">BH", 0, len(sni_bytes)) + sni_bytes
-    sni_list = struct.pack(">H", len(sni_entry)) + sni_entry
-    sni_ext = struct.pack(">HH", 0x0000, len(sni_list)) + sni_list
-    supported_versions = struct.pack(">HHB", 0x002B, 3, 2) + struct.pack(">H", 0x0304)
-    extensions = sni_ext + supported_versions
-    extensions_data = struct.pack(">H", len(extensions)) + extensions
-    client_version = struct.pack(">H", 0x0303)
-    random_bytes = bytes([random.randint(0, 255) for _ in range(32)])
-    session_id = struct.pack("B", 0)
-    cipher_suites = struct.pack(">H", 4) + struct.pack(">HH", 0x1301, 0x1302)
-    compression = struct.pack("BB", 1, 0)
-    client_hello_body = (
-        client_version
-        + random_bytes
-        + session_id
-        + cipher_suites
-        + compression
-        + extensions_data
-    )
-    handshake = struct.pack("B", 0x01)
-    handshake += struct.pack(">I", len(client_hello_body))[1:]
-    handshake += client_hello_body
-    record = struct.pack("B", 0x16)
-    record += struct.pack(">H", 0x0301)
-    record += struct.pack(">H", len(handshake))
-    record += handshake
-    return record
-
-
-def create_http_request(host, path="/"):
-    return f"GET {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: DPI-Test/1.0\r\nAccept: */*\r\n\r\n".encode()
-
-
-def create_dns_query(domain):
-    txid = struct.pack(">H", random.randint(1, 65535))
-    flags = struct.pack(">H", 0x0100)
-    counts = struct.pack(">HHHH", 1, 0, 0, 0)
-    question = b""
-    for label in domain.split("."):
-        question += struct.pack("B", len(label)) + label.encode()
-    question += struct.pack("B", 0)
-    question += struct.pack(">HH", 1, 1)
-    return txid + flags + counts + question
+    def generate(self) -> None:
+        """Executes the standard test generation suite."""
+        tls_targets = [
+            ("142.250.185.206", "www.google.com"),
+            ("142.250.185.110", "www.youtube.com"),
+            ("157.240.1.35", "www.facebook.com"),
+            ("140.82.114.4", "github.com"),
+            ("35.186.224.25", "zoom.us"),
+            ("17.253.144.10", "www.apple.com"),
+        ]
+        
+        http_targets = [
+            ("93.184.216.34", "example.com"),
+            ("185.199.108.153", "httpbin.org"),
+        ]
+        
+        dns_queries = [
+            "www.google.com",
+            "www.youtube.com",
+            "api.twitter.com",
+        ]
+        
+        for ip, sni in tls_targets:
+            self.simulate_tls_flow(ip, sni)
+            
+        for ip, host in http_targets:
+            self.simulate_http_flow(ip, host)
+            
+        for domain in dns_queries:
+            self.simulate_dns_query(domain)
+            
+        blocked_ip = "192.168.1.50"
+        self.simulate_blocked_traffic(blocked_ip, packet_count=5)
+        
+        self.writer.close()
+        
+        logger.info(f"Created {self.writer.filename} with synthetic traffic:")
+        logger.info(f"  - {len(tls_targets)} TLS handshakes")
+        logger.info(f"  - {len(http_targets)} HTTP flows")
+        logger.info(f"  - {len(dns_queries)} DNS queries")
+        logger.info(f"  - 5 packets from blocked source {blocked_ip}")
 
 
 def main():
-    writer = PCAPWriter("test_dpi.pcap")
-    user_mac = "00:11:22:33:44:55"
-    user_ip = "192.168.1.100"
-    gateway_mac = "aa:bb:cc:dd:ee:ff"
-    tls_connections = [
-        ("142.250.185.206", "www.google.com", 443),
-        ("142.250.185.110", "www.youtube.com", 443),
-        ("157.240.1.35", "www.facebook.com", 443),
-        ("157.240.1.174", "www.instagram.com", 443),
-        ("104.244.42.65", "twitter.com", 443),
-        ("52.94.236.248", "www.amazon.com", 443),
-        ("23.52.167.61", "www.netflix.com", 443),
-        ("140.82.114.4", "github.com", 443),
-        ("104.16.85.20", "discord.com", 443),
-        ("35.186.224.25", "zoom.us", 443),
-        ("35.186.227.140", "web.telegram.org", 443),
-        ("99.86.0.100", "www.tiktok.com", 443),
-        ("35.186.224.47", "open.spotify.com", 443),
-        ("192.0.78.24", "www.cloudflare.com", 443),
-        ("13.107.42.14", "www.microsoft.com", 443),
-        ("17.253.144.10", "www.apple.com", 443),
-    ]
-    http_connections = [
-        ("93.184.216.34", "example.com", 80),
-        ("185.199.108.153", "httpbin.org", 80),
-    ]
-    dns_queries = [
-        "www.google.com",
-        "www.youtube.com",
-        "www.facebook.com",
-        "api.twitter.com",
-    ]
-    seq_base = 1000
-    for dst_ip, sni, dst_port in tls_connections:
-        src_port = random.randint(49152, 65535)
-        eth = create_ethernet_header(user_mac, gateway_mac)
-        tcp = create_tcp_header(src_port, dst_port, seq_base, 0, 0x02)
-        ip = create_ip_header(user_ip, dst_ip, 6, len(tcp))
-        writer.write_packet(eth + ip + tcp)
-        tcp = create_tcp_header(dst_port, src_port, seq_base + 1000, seq_base + 1, 0x12)
-        ip = create_ip_header(dst_ip, user_ip, 6, len(tcp))
-        eth = create_ethernet_header(gateway_mac, user_mac)
-        writer.write_packet(eth + ip + tcp)
-        eth = create_ethernet_header(user_mac, gateway_mac)
-        tcp = create_tcp_header(src_port, dst_port, seq_base + 1, seq_base + 1001, 0x10)
-        ip = create_ip_header(user_ip, dst_ip, 6, len(tcp))
-        writer.write_packet(eth + ip + tcp)
-        tls_data = create_tls_client_hello(sni)
-        tcp = create_tcp_header(src_port, dst_port, seq_base + 1, seq_base + 1001, 0x18)
-        ip = create_ip_header(user_ip, dst_ip, 6, len(tcp) + len(tls_data))
-        writer.write_packet(eth + ip + tcp + tls_data)
-        seq_base += 10000
-    for dst_ip, host, dst_port in http_connections:
-        src_port = random.randint(49152, 65535)
-        eth = create_ethernet_header(user_mac, gateway_mac)
-        tcp = create_tcp_header(src_port, dst_port, seq_base, 0, 0x02)
-        ip = create_ip_header(user_ip, dst_ip, 6, len(tcp))
-        writer.write_packet(eth + ip + tcp)
-        http_data = create_http_request(host)
-        tcp = create_tcp_header(src_port, dst_port, seq_base + 1, 1, 0x18)
-        ip = create_ip_header(user_ip, dst_ip, 6, len(tcp) + len(http_data))
-        writer.write_packet(eth + ip + tcp + http_data)
-        seq_base += 10000
-    dns_server = "8.8.8.8"
-    for domain in dns_queries:
-        src_port = random.randint(49152, 65535)
-        dns_data = create_dns_query(domain)
-        eth = create_ethernet_header(user_mac, gateway_mac)
-        udp = create_udp_header(src_port, 53, len(dns_data))
-        ip = create_ip_header(user_ip, dns_server, 17, len(udp) + len(dns_data))
-        writer.write_packet(eth + ip + udp + dns_data)
-    blocked_source_ip = "192.168.1.50"
-    for i in range(5):
-        src_port = random.randint(49152, 65535)
-        dst_ip = "172.217.0.100"
-        eth = create_ethernet_header("00:11:22:33:44:56", gateway_mac)
-        tcp = create_tcp_header(src_port, 443, seq_base, 0, 0x02)
-        ip = create_ip_header(blocked_source_ip, dst_ip, 6, len(tcp))
-        writer.write_packet(eth + ip + tcp)
-        seq_base += 1000
-    writer.close()
-    print("Created test_dpi.pcap with test traffic")
-    print(f"  - {len(tls_connections)} TLS connections with SNI")
-    print(f"  - {len(http_connections)} HTTP connections")
-    print(f"  - {len(dns_queries)} DNS queries")
-    print(f"  - 5 packets from blocked IP {blocked_source_ip}")
-
+    client = NetworkEndpoint(mac="00:11:22:33:44:55", ip="192.168.1.100")
+    generator = TrafficGenerator(
+        output_file="test_dpi.pcap",
+        client=client,
+        gateway_mac="aa:bb:cc:dd:ee:ff"
+    )
+    generator.generate()
 
 if __name__ == "__main__":
     main()
