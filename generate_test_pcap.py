@@ -9,7 +9,6 @@ import logging
 import random
 import struct
 from dataclasses import dataclass
-from typing import List, Tuple
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
