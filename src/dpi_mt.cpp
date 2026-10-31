@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <thread>
 #include <unordered_map>
@@ -44,10 +45,10 @@ public:
     unique_lock<mutex> lock(mutex_);
     if (!not_empty_.wait_for(lock, chrono::milliseconds(timeout_ms),
                              [this] { return !queue_.empty() || shutdown_; })) {
-      return false;
+      return nullopt;
     }
     if (queue_.empty())
-      return false;
+      return nullopt;
     T item = move(queue_.front());
     queue_.pop();
     not_full_.notify_one();
