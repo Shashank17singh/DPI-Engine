@@ -27,3 +27,6 @@ jobs:
         run: |
           test -f build/dpi_engine || test -f build/dpi_simple
           echo "Build successful"
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
