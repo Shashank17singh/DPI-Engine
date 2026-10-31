@@ -30,7 +30,7 @@ class PCAPWriter:
 
     def __init__(self, filename: str):
         self.filename = filename
-        self.file = open(filename, "wb")
+        self.file = open(filename, "wb")  # noqa: SIM115
         self.timestamp = 1700000000
         self._write_global_header()
 
