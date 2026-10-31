@@ -27,3 +27,8 @@ add_executable(dpi_simple src/main_working.cpp ${COMMON_SOURCES})
 add_executable(dpi_engine src/dpi_mt.cpp ${COMMON_SOURCES})
 find_package(Threads REQUIRED)
 target_link_libraries(dpi_engine PRIVATE Threads::Threads)
+
+# Unit tests: run with ctest
+enable_testing()
+add_executable(extractor_tests tests/test_extractors.cpp src/sni_extractor.cpp)
+add_test(NAME extractors COMMAND extractor_tests)
