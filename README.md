@@ -1,30 +1,22 @@
-<div align="center">
+# DPI Engine
 
-# DPI Engine - Deep Packet Inspection System
+A C++17 packet analyzer that rebuilds TCP and UDP flows from PCAP captures and classifies traffic by TLS SNI and HTTP Host.
 
-**A high-throughput C++17 packet analyzer that reconstructs TCP/UDP flows and classifies traffic via TLS SNI & HTTP Host inspection**
-
-[![C++](https://img.shields.io/badge/C++17-High%20Performance-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)](https://isocpp.org/)
-[![Networking](https://img.shields.io/badge/PCAP-Networking-4B8BBE?style=for-the-badge&logoColor=white)](https://www.tcpdump.org/)
-[![Multithreading](https://img.shields.io/badge/Multithreaded-Load%20Balancer-FF4500?style=for-the-badge&logoColor=white)](#architecture)
-
-</div>
-
----
+![DPI Engine terminal output: packets read, forwarded, and dispatched per thread](dpi-engine.png)
 
 ## Overview
 
 A C++17 deep packet inspection engine that analyzes PCAP captures and reconstructs network flows. It classifies application-layer traffic using TLS SNI and HTTP Host inspection, supporting both single-threaded and multi-threaded architectures.
 
-By analyzing the TLS Client Hello handshake (SNI extraction) and HTTP Host headers, the engine can accurately classify encrypted HTTPS traffic and selectively enforce firewall rules (Drop/Forward) based on Application Type, Domain Name, or Source IP.
+By analyzing the TLS Client Hello handshake (SNI extraction) and HTTP Host headers, the engine can classify encrypted HTTPS traffic and selectively enforce firewall rules (Drop/Forward) based on Application Type, Domain Name, or Source IP.
 
-Designed for high throughput, the system features a multi-threaded Load Balancer and Fast Path architecture utilizing consistent hashing to distribute flow processing across multiple worker threads while maintaining TCP state.
+The multithreaded build uses a Load Balancer and Fast Path architecture utilizing consistent hashing to distribute flow processing across multiple worker threads while maintaining TCP state.
 
 ---
 
 ## Key Features
 
-- **Protocol Parsing:** Zero-copy parsing of L2/L3/L4 headers (Ethernet, IPv4, TCP, UDP).
+- **Protocol Parsing:** Parsing of L2/L3/L4 headers (Ethernet, IPv4, TCP, UDP).
 - **TLS SNI Extraction:** Deep inspection of TLS 1.2/1.3 handshakes to extract Server Name Indication (SNI) for encrypted traffic classification.
 - **Stateful Flow Tracking:** Hash-based connection tracking using standard 5-tuples (Src IP, Dst IP, Src Port, Dst Port, Protocol).
 - **Rule-based Firewall:** Configurable blocking engine (Drop/Forward) with support for IP, Domain, and Application-level rules.
@@ -164,7 +156,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-## Deep Codebase Analysis
+## Files
 
 | File                      | Purpose / Details                                                            |
 | ------------------------- | ---------------------------------------------------------------------------- |
