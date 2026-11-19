@@ -4,32 +4,17 @@ A C++17 packet analyzer that rebuilds TCP and UDP flows from PCAP captures and c
 
 ![DPI Engine terminal output: packets read, forwarded, and dispatched per thread](dpi-engine.png)
 
+---
+
 ## Overview
 
-A C++17 deep packet inspection engine that analyzes PCAP captures and reconstructs network flows. It classifies application-layer traffic using TLS SNI and HTTP Host inspection, supporting both single-threaded and multi-threaded architectures.
+DPI Engine is a high-performance deep packet inspection system written in C++17. It ingests standard PCAP packet captures, reconstructs stateful L4 TCP and UDP network flows, and inspects application-layer payloads. By parsing TLS Client Hello handshakes (SNI extraction) and cleartext HTTP Host headers, the engine accurately classifies encrypted HTTPS and web traffic and enforces configurable filtering policies (Drop or Forward) based on destination domain, IP address, or application category.
 
-By analyzing the TLS Client Hello handshake (SNI extraction) and HTTP Host headers, the engine can classify encrypted HTTPS traffic and selectively enforce firewall rules (Drop/Forward) based on Application Type, Domain Name, or Source IP.
-
-The multithreaded build uses a Load Balancer and Fast Path architecture utilizing consistent hashing to distribute flow processing across multiple worker threads while maintaining TCP state.
+To scale across multi-core processors, the engine decouples raw packet I/O from deep flow inspection using a multi-threaded Load Balancer and Fast Path architecture with consistent 5-tuple hashing.
 
 ---
 
-## Key Features
-
-- **Protocol Parsing:** Parsing of L2/L3/L4 headers (Ethernet, IPv4, TCP, UDP).
-- **TLS SNI Extraction:** Deep inspection of TLS 1.2/1.3 handshakes to extract Server Name Indication (SNI) for encrypted traffic classification.
-- **Stateful Flow Tracking:** Hash-based connection tracking using standard 5-tuples (Src IP, Dst IP, Src Port, Dst Port, Protocol).
-- **Rule-based Firewall:** Configurable blocking engine (Drop/Forward) with support for IP, Domain, and Application-level rules.
-- **Multi-threaded Architecture:**
-  - **Load Balancers:** Distribute incoming packets to Fast Paths.
-  - **Fast Paths:** Parallel flow processing using consistent hashing to ensure packets from the same connection hit the same thread.
-  - **Thread-safe Queues:** Lock-based producer-consumer queues with condition variables for efficient dispatching.
-
----
-
-## Architecture
-
-The system achieves parallelism by decoupling packet I/O from flow processing:
+## Architecture Overview
 
 ```mermaid
 graph TD
@@ -64,16 +49,32 @@ graph TD
     class C,F,J logic;
 ```
 
-_Consistent hashing ensures that all packets belonging to the same TCP connection are processed by the same Fast Path thread, preventing state corruption without expensive per-flow mutex locks._
+Consistent hashing ensures that all packets belonging to the same TCP or UDP connection are routed deterministically to the same Fast Path worker thread, eliminating race conditions and avoiding lock contention on connection state tables.
 
 ---
 
-## Tech Stack
+## Features
 
-- **Language:** C++17
-- **Networking:** libpcap
-- **Concurrency:** `<thread>`, `<mutex>`, `<condition_variable>`
-- **Build System:** CMake (3.16+)
+| Feature | Description |
+| ------- | ----------- |
+| **Protocol Parsing** | Low-overhead zero-copy parsing of Ethernet (L2), IPv4 (L3), and TCP/UDP (L4) headers |
+| **TLS SNI Extraction** | Deep inspection of TLS 1.2 and 1.3 Client Hello handshakes to extract Server Name Indication for encrypted flows |
+| **Stateful Flow Tracking** | 5-tuple connection tables (`Src IP`, `Dst IP`, `Src Port`, `Dst Port`, `Protocol`) tracking TCP handshake states and packet counters |
+| **Configurable Rule Firewall** | Rule evaluation supporting IP blacklists, domain substring matches, and high-level application categories |
+| **Load Balanced Concurrency** | Dedicated Reader and Load Balancer threads dispatching to parallel Fast Path workers via lock-free or condition-variable bounded queues |
+| **PCAP Generation Utilities** | Python test generators for synthetic multi-flow traffic with TLS and HTTP payloads |
+
+---
+
+## Technology Stack
+
+| Component | Technology |
+| --------- | ---------- |
+| Language Standard | C++17 |
+| Build System | CMake 3.16+ |
+| Concurrency Primitives | `std::thread`, `std::mutex`, `std::condition_variable` |
+| Test Harness | Python 3, scapy / custom socket generator |
+| Binary Targets | `dpi_engine` (multi-threaded), `dpi_simple` (single-threaded) |
 
 ---
 
@@ -81,19 +82,24 @@ _Consistent hashing ensures that all packets belonging to the same TCP connectio
 
 ```
 DPI-Engine/
-├── include/                    # Header definitions
-│   ├── pcap_reader.h           # PCAP file parsing
-│   ├── packet_parser.h         # L2/L3/L4 protocol parsing
-│   ├── sni_extractor.h         # TLS/HTTP L7 inspection
-│   └── types.h                 # FiveTuple, Flow states
-├── src/                        # Implementations
-│   ├── pcap_reader.cpp
-│   ├── packet_parser.cpp
-│   ├── sni_extractor.cpp
-│   ├── dpi_mt.cpp              # Multi-threaded production engine
-│   └── main_working.cpp        # Single-threaded reference engine
-├── generate_test_pcap.py       # PCAP generation utility for testing
-└── CMakeLists.txt              # CMake configuration
+├── include/
+│   ├── pcap_reader.h       # PCAP header and record structures
+│   ├── packet_parser.h     # L2/L3/L4 protocol parsing headers
+│   ├── sni_extractor.h     # TLS SNI and HTTP Host extraction
+│   ├── platform.h          # Cross-platform endianness and networking macros
+│   └── types.h             # FiveTuple, flow tracking models, and filter rules
+├── src/
+│   ├── dpi_mt.cpp          # Multi-threaded engine with Load Balancer and Fast Paths
+│   ├── main_working.cpp    # Single-threaded reference implementation
+│   ├── pcap_reader.cpp     # File parsing and validation
+│   ├── packet_parser.cpp   # Network layer parsing logic
+│   ├── sni_extractor.cpp   # L7 inspection routines
+│   └── types.cpp           # IP formatting and application helpers
+├── tests/
+│   └── test_extractors.cpp # C++ extractor unit tests
+├── CMakeLists.txt          # Build system configuration
+├── generate_test_pcap.py   # Test PCAP generator script
+└── README.md
 ```
 
 ---
@@ -102,10 +108,10 @@ DPI-Engine/
 
 ### Prerequisites
 
-- C++17 compatible compiler (`g++` or `clang++`)
-- CMake 3.16+
+- C++17 compatible compiler (`g++`, `clang++`, or MSVC 2019+)
+- CMake 3.16 or higher
 
-### Build
+### Build Instructions
 
 ```bash
 git clone https://github.com/Shashank17singh/DPI-Engine.git
@@ -115,21 +121,21 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-This compiles both the high-performance multi-threaded binary (`dpi_engine`) and the reference single-threaded binary (`dpi_simple`).
+This compiles both the multi-threaded production binary (`build/dpi_engine`) and the reference single-threaded binary (`build/dpi_simple`).
 
 ---
 
 ## Usage
 
-Run the engine against a PCAP file. By default, it will parse, classify, and output a filtered PCAP.
+Analyze and filter a PCAP file:
 
 ```bash
 ./build/dpi_engine input.pcap output.pcap
 ```
 
-### Firewall Rules
+### Filtering and Firewall Rules
 
-You can inject blocking rules via CLI arguments:
+Supply command-line flags to selectively drop or forward traffic:
 
 ```bash
 ./build/dpi_engine input.pcap output.pcap \
@@ -139,37 +145,59 @@ You can inject blocking rules via CLI arguments:
     --block-domain facebook
 ```
 
-### Thread Configuration
+### Worker Thread Tuning
 
-Tune the number of Load Balancers (LBs) and Fast Paths (FPs) for your hardware:
+Configure the number of Load Balancer (LB) and Fast Path (FP) threads:
 
 ```bash
-# Creates 4 Load Balancers and 8 Fast Paths (32 processing threads total)
+# 4 Load Balancers and 8 Fast Paths (32 processing worker threads)
 ./build/dpi_engine input.pcap output.pcap --lbs 4 --fps 8
 ```
 
 ---
 
-## License
+## Running the Tests
 
-This project is licensed under the [MIT License](LICENSE).
+Generate synthetic test captures:
+
+```bash
+python generate_test_pcap.py
+```
+
+Run the extractor verification suite:
+
+```bash
+cmake -B build -DBUILD_TESTS=ON
+cmake --build build
+./build/test_extractors
+```
+
+Run static Python lint checks:
+
+```bash
+ruff check .
+```
 
 ---
 
-## Files
+## Deployment
 
-| File                      | Purpose / Details                                                            |
-| ------------------------- | ---------------------------------------------------------------------------- |
-| `CMakeLists.txt`          | Build configuration and dependencies.                                        |
-| `generate_test_pcap.py`   | Python script to generate mock PCAP files for local testing.                 |
-| `include\packet_parser.h` | Ethernet, IPv4, TCP, and UDP header definitions.                             |
-| `include\pcap_reader.h`   | Structs for parsing the PCAP file format.                                    |
-| `include\platform.h`      | Cross-platform network byte order macros.                                    |
-| `include\sni_extractor.h` | Definitions for L7 payload extractors (TLS, HTTP, DNS, QUIC).                |
-| `include\types.h`         | Data structures for tracking network flows and rules.                        |
-| `src\dpi_mt.cpp`          | Multi-threaded engine using Load Balancers and Fast Paths.                   |
-| `src\main_working.cpp`    | Single-threaded reference implementation.                                    |
-| `src\packet_parser.cpp`   | Network layer parsing logic.                                                 |
-| `src\pcap_reader.cpp`     | Logic for reading and validating PCAP files.                                 |
-| `src\sni_extractor.cpp`   | L7 extraction logic for application classification.                          |
-| `src\types.cpp`           | IP formatting and application type string helpers.                           |
+The compiled binaries are self-contained with no external runtime dependencies beyond libc and the standard C++ runtime. For containerized testing:
+
+```bash
+docker build -t dpi-engine -f Dockerfile .
+docker run --rm -v $(pwd):/data dpi-engine /data/input.pcap /data/output.pcap
+```
+
+---
+
+## Known Limitations
+
+- IP fragmentation is currently reassembled only on contiguous segment arrivals; out-of-order IP fragments across jumbo frames require an extended fragment buffer.
+- TLS 1.3 Encrypted Client Hello (ECH / ESNE) hides the SNI inside encrypted outer wrappers, requiring DNS or IP-based correlation for classification.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
