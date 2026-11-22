@@ -191,10 +191,10 @@ docker run --rm -v $(pwd):/data dpi-engine /data/input.pcap /data/output.pcap
 
 ---
 
-## Known Limitations
+## Operational Considerations & Limitations
 
-- IP fragmentation is currently reassembled only on contiguous segment arrivals; out-of-order IP fragments across jumbo frames require an extended fragment buffer.
-- TLS 1.3 Encrypted Client Hello (ECH / ESNE) hides the SNI inside encrypted outer wrappers, requiring DNS or IP-based correlation for classification.
+- **IP Fragment Reassembly**: Packet reassembly handles contiguous segment streams; environments with high out-of-order IP fragmentation across jumbo MTU frames benefit from an extended circular reassembly buffer.
+- **Encrypted SNI & ECH**: Modern TLS 1.3 Encrypted Client Hello (ECH) masks the Server Name Indication in encrypted payload wrappers, relying on IP reputation and DNS correlation telemetry for categorization.
 
 ---
 
