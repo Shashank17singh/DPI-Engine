@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.svg" width="72" height="72" alt="DPI Engine Logo" />
+</p>
+
 # DPI Engine
 
 A C++17 packet analyzer that rebuilds TCP and UDP flows from PCAP captures and classifies traffic by TLS SNI and HTTP Host.
